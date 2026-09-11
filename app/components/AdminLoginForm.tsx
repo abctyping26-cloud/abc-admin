@@ -2,34 +2,92 @@
 
 import React, { useState } from "react";
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 export default function AdminLoginForm() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isNotFound, setIsNotFound] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [currentAdmin, setCurrentAdmin] = useState<{
+    id: string;
+    identifier: string;
+    role: string;
+  } | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier.trim() || !password) return;
-    setIsSubmitting(true);
 
-    setTimeout(() => {
-      setIsSubmitting(false);
+    setIsSubmitting(true);
+    setError(null);
+    setIsNotFound(false);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          identifier: identifier.trim(),
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          setIsNotFound(true);
+        }
+        throw new Error(data.message || "Failed to authenticate admin.");
+      }
+
+      // Store admin authentication token
+      if (data.data?.token) {
+        localStorage.setItem("abc_admin_token", data.data.token);
+      }
+      if (data.data?.admin) {
+        localStorage.setItem(
+          "abc_admin_user",
+          JSON.stringify(data.data.admin)
+        );
+        setCurrentAdmin(data.data.admin);
+      }
+
       setSubmitted(true);
-    }, 600);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "An unexpected error occurred. Please try again.";
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
     setSubmitted(false);
+    setError(null);
+    setIsNotFound(false);
     setIdentifier("");
     setPassword("");
+    setCurrentAdmin(null);
   };
 
   return (
     <div className="login-form-container">
       <div className="login-form-header">
         <h1 className="login-title">Sign in to Admin</h1>
+        <p className="login-subtitle" style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>
+          Internal access only. Self-registration is restricted.
+        </p>
       </div>
 
       {submitted ? (
@@ -72,11 +130,27 @@ export default function AdminLoginForm() {
             </svg>
           </div>
           <div>
+            <span
+              style={{
+                display: "inline-block",
+                padding: "2px 10px",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                borderRadius: "9999px",
+                backgroundColor: "#f1f5f9",
+                color: "#0f172a",
+                marginBottom: "8px",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Role: {currentAdmin?.role || "Admin"}
+            </span>
             <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#0f172a" }}>
               Authentication Successful
             </h3>
             <p style={{ fontSize: "0.88rem", color: "#64748b", marginTop: "4px" }}>
-              Logged in as <strong style={{ color: "#0f172a" }}>{identifier}</strong>.
+              Logged in as <strong style={{ color: "#0f172a" }}>{currentAdmin?.identifier || identifier}</strong>.
             </p>
           </div>
           <button
@@ -98,6 +172,28 @@ export default function AdminLoginForm() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="login-form">
+          {error && (
+            <div
+              style={{
+                padding: "12px 14px",
+                backgroundColor: isNotFound ? "#fffbeb" : "#fef2f2",
+                border: isNotFound ? "1px solid #fef3c7" : "1px solid #fecaca",
+                borderRadius: "10px",
+                color: isNotFound ? "#92400e" : "#b91c1c",
+                fontSize: "0.86rem",
+                lineHeight: "1.4",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
+                <span>{isNotFound ? "🚫" : "⚠️"}</span>
+                <div>
+                  <strong>{isNotFound ? "Account Not Found" : "Authentication Failed"}</strong>
+                  <p style={{ margin: "2px 0 0 0", fontSize: "0.82rem" }}>{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Admin Email or Username */}
           <div className="login-field">
             <label htmlFor="admin-identifier" className="login-label">
@@ -113,6 +209,7 @@ export default function AdminLoginForm() {
                 className="login-input"
                 autoComplete="username"
                 required
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -137,6 +234,7 @@ export default function AdminLoginForm() {
                 className="login-input"
                 autoComplete="current-password"
                 required
+                disabled={isSubmitting}
               />
               <button
                 type="button"
@@ -171,13 +269,12 @@ export default function AdminLoginForm() {
             </div>
           </div>
 
-
           {/* Submit Button */}
           <button
             type="submit"
             className="login-submit-btn"
             disabled={isSubmitting}
-            style={{ opacity: isSubmitting ? 0.8 : 1 }}
+            style={{ opacity: isSubmitting ? 0.75 : 1, cursor: isSubmitting ? "not-allowed" : "pointer" }}
           >
             <span>{isSubmitting ? "Authenticating..." : "Sign in to Admin"}</span>
             <svg
@@ -194,7 +291,7 @@ export default function AdminLoginForm() {
 
           {/* Security notice */}
           <p className="login-footer-text" style={{ marginTop: "12px" }}>
-            Restricted access. Authorized ABC Typing personnel only.
+            🔒 Restricted access. Authorized ABC Typing personnel only.
           </p>
         </form>
       )}
