@@ -249,7 +249,7 @@ export default function DashboardContent({
                 ...item,
                 status: "responded",
                 respondedBy: `${senderName} (${isMaster ? "Master Admin" : "Worker Admin"})`,
-                respondedByRole: roleTitle as any,
+                respondedByRole: roleTitle,
                 respondedAt: new Date().toISOString(),
               }
             : item
@@ -263,8 +263,10 @@ export default function DashboardContent({
         setReplyModalEnquiry(null);
         setReplySuccessMessage(null);
       }, 1500);
-    } catch (err: any) {
-      setReplyError(err.message || "Failed to send email reply.");
+    } catch (err: unknown) {
+      setReplyError(
+        err instanceof Error ? err.message : "Failed to send email reply."
+      );
     } finally {
       setIsSendingReply(false);
     }
@@ -592,134 +594,10 @@ export default function DashboardContent({
     }
   };
 
-  // If Worker Admin, keep content section completely clean with nothing for now
-  if (!isMaster) {
-    return (
-      <main className="dashboard-main">
-        {/* Worker Admin Content Section — Clean with nothing for now */}
-        {isWorkerProfilePending && (
-          <div className="admin-modal-backdrop" style={{ zIndex: 9999 }}>
-            <div
-              className="admin-modal-box"
-              style={{ maxWidth: "440px", padding: "32px 28px" }}
-            >
-              <div style={{ textAlign: "center", marginBottom: "20px" }}>
-                <div
-                  style={{
-                    width: "48px",
-                    height: "48px",
-                    borderRadius: "50%",
-                    backgroundColor: "#f1f5f9",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: "12px",
-                  }}
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#0f172a"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    style={{ width: "22px", height: "22px" }}
-                  >
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                  </svg>
-                </div>
-                <h2
-                  style={{
-                    fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
-                    fontSize: "1.25rem",
-                    fontWeight: 700,
-                    color: "#0f172a",
-                    margin: "0 0 6px 0",
-                  }}
-                >
-                  Complete Your Profile
-                </h2>
-                <p
-                  style={{
-                    fontSize: "0.85rem",
-                    color: "#64748b",
-                    margin: 0,
-                    lineHeight: 1.45,
-                  }}
-                >
-                  Welcome! Please enter your name and phone number to complete your
-                  Worker Admin account setup.
-                </p>
-              </div>
-
-              {profileError && (
-                <div
-                  style={{
-                    backgroundColor: "#fef2f2",
-                    color: "#b91c1c",
-                    fontSize: "0.82rem",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    marginBottom: "14px",
-                    border: "1px solid #fecaca",
-                  }}
-                >
-                  {profileError}
-                </div>
-              )}
-
-              <form onSubmit={handleCompleteProfile} className="admin-modal-form">
-                <div className="admin-form-field">
-                  <label className="admin-form-label">Full Name *</label>
-                  <input
-                    type="text"
-                    value={workerProfileName}
-                    onChange={(e) => setWorkerProfileName(e.target.value)}
-                    placeholder="e.g. Tariq Mansoor"
-                    className="admin-form-input"
-                    required
-                    autoFocus
-                  />
-                </div>
-
-                <div className="admin-form-field">
-                  <label className="admin-form-label">Phone Number *</label>
-                  <input
-                    type="tel"
-                    value={workerProfilePhone}
-                    onChange={(e) => setWorkerProfilePhone(e.target.value)}
-                    placeholder="e.g. +91 98765 43210"
-                    className="admin-form-input"
-                    required
-                  />
-                </div>
-
-                <div
-                  className="admin-modal-actions"
-                  style={{ justifyContent: "flex-end", marginTop: "24px" }}
-                >
-                  <button
-                    type="submit"
-                    className="capsule-btn-black"
-                    style={{ width: "100%", justifyContent: "center" }}
-                  >
-                    Complete Setup
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-      </main>
-    );
-  }
-
   const isCurrentTabLoading =
-    isMaster &&
-    ((activeTab === "worker_admins" && isLoadingWorkers) ||
-      (activeTab === "enquiries" && isEnquiriesLoading) ||
-      (activeTab === "overview" && isEnquiriesLoading));
+    (activeTab === "worker_admins" && isMaster && isLoadingWorkers) ||
+    (activeTab === "enquiries" && isEnquiriesLoading) ||
+    (activeTab === "overview" && isMaster && isEnquiriesLoading);
 
   const getLoadingDetails = () => {
     if (activeTab === "worker_admins") {
@@ -757,48 +635,52 @@ export default function DashboardContent({
           TAB: OVERVIEW
           ------------------------------------------------------------- */}
       {activeTab === "overview" && (
-        <>
-          <h1 className="content-title">
-            {isMaster ? "Master Admin Workspace" : "Worker Admin Workspace"}
-          </h1>
-          <p className="content-subtitle" style={{ marginBottom: "24px" }}>
-            Welcome back, {user?.name || user?.identifier || "Admin"}. Overview of recent platform activity.
-          </p>
+        isMaster ? (
+          <>
+            <h1 className="content-title">Master Admin Workspace</h1>
+            <p className="content-subtitle" style={{ marginBottom: "24px" }}>
+              Welcome back, {user?.name || user?.identifier || "Admin"}. Overview of recent platform activity.
+            </p>
 
-          <div className="enquiry-metrics-grid">
-            <div className="enquiry-metric-card">
-              <div className="enquiry-metric-header">
-                <span className="enquiry-metric-label">Active Worker Admins</span>
-                <span className="enquiry-metric-dot all" />
+            <div className="enquiry-metrics-grid">
+              <div className="enquiry-metric-card">
+                <div className="enquiry-metric-header">
+                  <span className="enquiry-metric-label">Active Worker Admins</span>
+                  <span className="enquiry-metric-dot all" />
+                </div>
+                <span className="enquiry-metric-value">{workerAdmins.length}</span>
               </div>
-              <span className="enquiry-metric-value">{workerAdmins.length}</span>
-            </div>
 
-            <div className="enquiry-metric-card">
-              <div className="enquiry-metric-header">
-                <span className="enquiry-metric-label">Total Enquiries</span>
-                <span className="enquiry-metric-dot all" />
+              <div className="enquiry-metric-card">
+                <div className="enquiry-metric-header">
+                  <span className="enquiry-metric-label">Total Enquiries</span>
+                  <span className="enquiry-metric-dot all" />
+                </div>
+                <span className="enquiry-metric-value">{totalCount}</span>
               </div>
-              <span className="enquiry-metric-value">{totalCount}</span>
-            </div>
 
-            <div className="enquiry-metric-card">
-              <div className="enquiry-metric-header">
-                <span className="enquiry-metric-label">Pending Response</span>
-                <span className="enquiry-metric-dot pending" />
+              <div className="enquiry-metric-card">
+                <div className="enquiry-metric-header">
+                  <span className="enquiry-metric-label">Pending Response</span>
+                  <span className="enquiry-metric-dot pending" />
+                </div>
+                <span className="enquiry-metric-value">{pendingCount}</span>
               </div>
-              <span className="enquiry-metric-value">{pendingCount}</span>
-            </div>
 
-            <div className="enquiry-metric-card">
-              <div className="enquiry-metric-header">
-                <span className="enquiry-metric-label">Responded Enquiries</span>
-                <span className="enquiry-metric-dot responded" />
+              <div className="enquiry-metric-card">
+                <div className="enquiry-metric-header">
+                  <span className="enquiry-metric-label">Responded Enquiries</span>
+                  <span className="enquiry-metric-dot responded" />
+                </div>
+                <span className="enquiry-metric-value">{respondedCount}</span>
               </div>
-              <span className="enquiry-metric-value">{respondedCount}</span>
             </div>
+          </>
+        ) : (
+          <div style={{ minHeight: "300px" }}>
+            {/* Clean overview workspace for worker admin — awaiting further configuration */}
           </div>
-        </>
+        )
       )}
 
       {/* -------------------------------------------------------------
@@ -1264,9 +1146,9 @@ export default function DashboardContent({
       )}
 
       {/* -------------------------------------------------------------
-          TAB: WORKER ADMINS
+          TAB: WORKER ADMINS (Master Admin only)
           ------------------------------------------------------------- */}
-      {activeTab === "worker_admins" && (
+      {activeTab === "worker_admins" && isMaster && (
         <>
           {/* Header Row: Title on Left, Capsule Button on Right */}
           <div className="content-header-row">
@@ -1408,20 +1290,55 @@ export default function DashboardContent({
                           </span>
                         </td>
                         <td>
-                          <span
-                            style={{ fontSize: "0.84rem", color: "#64748b" }}
-                          >
-                            {admin.lastLoginAt
-                              ? new Date(admin.lastLoginAt).toLocaleDateString(
+                          {admin.lastLoginAt ? (
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "2px",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: "0.84rem",
+                                  color: "#0f172a",
+                                  fontWeight: 500,
+                                }}
+                              >
+                                {new Date(admin.lastLoginAt).toLocaleDateString(
                                   "en-GB",
                                   {
                                     day: "numeric",
                                     month: "short",
                                     year: "numeric",
                                   }
-                                )
-                              : "Never"}
-                          </span>
+                                )}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: "0.74rem",
+                                  color: "#64748b",
+                                  fontVariantNumeric: "tabular-nums",
+                                }}
+                              >
+                                {new Date(admin.lastLoginAt).toLocaleTimeString(
+                                  "en-US",
+                                  {
+                                    hour: "numeric",
+                                    minute: "2-digit",
+                                    second: "2-digit",
+                                    hour12: true,
+                                  }
+                                )}
+                              </span>
+                            </div>
+                          ) : (
+                            <span
+                              style={{ fontSize: "0.84rem", color: "#94a3b8" }}
+                            >
+                              Never
+                            </span>
+                          )}
                         </td>
                         <td>
                           <span
@@ -1782,6 +1699,122 @@ export default function DashboardContent({
                   }}
                 >
                   {isSendingReply ? "Sending..." : "✉️ Send Email Reply"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Worker Admin First-Time Profile Setup */}
+      {isWorkerProfilePending && (
+        <div className="admin-modal-backdrop" style={{ zIndex: 9999 }}>
+          <div
+            className="admin-modal-box"
+            style={{ maxWidth: "440px", padding: "32px 28px" }}
+          >
+            <div style={{ textAlign: "center", marginBottom: "20px" }}>
+              <div
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "50%",
+                  backgroundColor: "#f1f5f9",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "12px",
+                }}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#0f172a"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ width: "22px", height: "22px" }}
+                >
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                </svg>
+              </div>
+              <h2
+                style={{
+                  fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+                  fontSize: "1.25rem",
+                  fontWeight: 700,
+                  color: "#0f172a",
+                  margin: "0 0 6px 0",
+                }}
+              >
+                Complete Your Profile
+              </h2>
+              <p
+                style={{
+                  fontSize: "0.85rem",
+                  color: "#64748b",
+                  margin: 0,
+                  lineHeight: 1.45,
+                }}
+              >
+                Welcome! Please enter your name and phone number to complete your
+                Worker Admin account setup.
+              </p>
+            </div>
+
+            {profileError && (
+              <div
+                style={{
+                  backgroundColor: "#fef2f2",
+                  color: "#b91c1c",
+                  fontSize: "0.82rem",
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  marginBottom: "14px",
+                  border: "1px solid #fecaca",
+                }}
+              >
+                {profileError}
+              </div>
+            )}
+
+            <form onSubmit={handleCompleteProfile} className="admin-modal-form">
+              <div className="admin-form-field">
+                <label className="admin-form-label">Full Name *</label>
+                <input
+                  type="text"
+                  value={workerProfileName}
+                  onChange={(e) => setWorkerProfileName(e.target.value)}
+                  placeholder="e.g. Alex Morgan"
+                  className="admin-form-input"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="admin-form-field">
+                <label className="admin-form-label">Phone Number *</label>
+                <input
+                  type="tel"
+                  value={workerProfilePhone}
+                  onChange={(e) => setWorkerProfilePhone(e.target.value)}
+                  placeholder="e.g. +91 98765 43210"
+                  className="admin-form-input"
+                  required
+                />
+              </div>
+
+              <div
+                className="admin-modal-actions"
+                style={{ justifyContent: "flex-end", marginTop: "24px" }}
+              >
+                <button
+                  type="submit"
+                  className="capsule-btn-black"
+                  style={{ width: "100%", justifyContent: "center" }}
+                >
+                  Complete Setup
                 </button>
               </div>
             </form>

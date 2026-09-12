@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import DashboardHeader from "./components/DashboardHeader";
 import DashboardSidebar, { type SidebarTab } from "./components/DashboardSidebar";
 import DashboardContent from "./components/DashboardContent";
+import { useInactivityTimeout } from "./hooks/useInactivityTimeout";
 
 function subscribe(callback: () => void) {
   window.addEventListener("storage", callback);
@@ -37,27 +38,14 @@ export default function Home() {
 
   const [activeTab, setActiveTab] = useState<SidebarTab>("overview");
   const [pendingEnquiriesCount, setPendingEnquiriesCount] = useState<number>(0);
-
-  useEffect(() => {
-    if (rawUserSnapshot === "unauthenticated") {
-      router.replace("/login");
-    }
-  }, [rawUserSnapshot, router]);
-
-  const handleSignOut = () => {
-    localStorage.removeItem("abc_admin_token");
-    localStorage.removeItem("abc_admin_user");
-    sessionStorage.removeItem("abc_admin_auth_toast");
-    router.replace("/login");
-  };
-
-  if (!rawUserSnapshot || rawUserSnapshot === "unauthenticated") {
-    return <main style={{ minHeight: "100vh", backgroundColor: "#ffffff" }} />;
-  }
+  const [hasDefaultedWorkerTab, setHasDefaultedWorkerTab] = useState(false);
 
   let user = null;
   try {
-    user = JSON.parse(rawUserSnapshot);
+    user =
+      rawUserSnapshot && rawUserSnapshot !== "unauthenticated"
+        ? JSON.parse(rawUserSnapshot)
+        : null;
   } catch {
     // Fallback if parsing fails
   }
@@ -66,6 +54,55 @@ export default function Home() {
     user?.role === "master_admin" ||
     user?.role === "superadmin" ||
     user?.identifier === "masteradmin@abc.com";
+
+  useEffect(() => {
+    if (rawUserSnapshot === "unauthenticated") {
+      router.replace("/login");
+    }
+  }, [rawUserSnapshot, router]);
+
+  // Default worker admin to enquiries tab on initial load
+  useEffect(() => {
+    if (user && !isMaster && !hasDefaultedWorkerTab) {
+      Promise.resolve().then(() => {
+        setActiveTab("enquiries");
+        setHasDefaultedWorkerTab(true);
+      });
+    }
+  }, [user, isMaster, hasDefaultedWorkerTab]);
+
+  const handleSignOut = () => {
+    localStorage.removeItem("abc_admin_token");
+    localStorage.removeItem("abc_admin_user");
+    localStorage.removeItem("abc_worker_last_activity");
+    sessionStorage.removeItem("abc_admin_auth_toast");
+    router.replace("/login");
+  };
+
+  const handleInactivityLogout = React.useCallback(() => {
+    localStorage.removeItem("abc_admin_token");
+    localStorage.removeItem("abc_admin_user");
+    localStorage.removeItem("abc_worker_last_activity");
+    sessionStorage.setItem(
+      "abc_admin_auth_toast",
+      JSON.stringify({
+        title: "Session Expired",
+        message: "You have been logged out due to 15 minutes of inactivity.",
+        role: "Worker Admin",
+      })
+    );
+    router.replace("/login");
+  }, [router]);
+
+  useInactivityTimeout({
+    enabled: Boolean(user && !isMaster),
+    timeoutMs: 15 * 60 * 1000, // 15 minutes
+    onTimeout: handleInactivityLogout,
+  });
+
+  if (!rawUserSnapshot || rawUserSnapshot === "unauthenticated") {
+    return <main style={{ minHeight: "100vh", backgroundColor: "#ffffff" }} />;
+  }
 
   return (
     <div className="dashboard-wrapper">
