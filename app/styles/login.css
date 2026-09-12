@@ -425,6 +425,24 @@
   transform: translateX(3px);
 }
 
+/* Minimalist Loading Spinner */
+@keyframes login-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.login-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: login-spinner-rotate 0.65s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
 .login-footer-text {
   font-family: 'Inter', var(--font-family, sans-serif);
   font-size: 0.82rem;
