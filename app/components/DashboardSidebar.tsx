@@ -2,7 +2,7 @@
 
 import React from "react";
 
-export type SidebarTab = "overview" | "worker_admins" | "enquiries";
+export type SidebarTab = "overview" | "worker_admins" | "enquiries" | "clients";
 
 interface DashboardSidebarProps {
   activeTab: SidebarTab;
@@ -40,6 +40,29 @@ export default function DashboardSidebar({
               <rect width="7" height="5" x="3" y="16" rx="1" />
             </svg>
             <span>Overview</span>
+          </div>
+        </button>
+
+        {/* Clients & Services (Available to both Master Admin & Worker Admins) */}
+        <button
+          type="button"
+          onClick={() => onSelectTab("clients")}
+          className={`sidebar-menu-btn ${activeTab === "clients" ? "active" : ""}`}
+        >
+          <div className="sidebar-menu-left">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <span>Clients & Files</span>
           </div>
         </button>
 
@@ -96,3 +119,4 @@ export default function DashboardSidebar({
     </aside>
   );
 }
+

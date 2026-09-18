@@ -1,25 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 
 interface DatabaseLoadingOverlayProps {
+  text?: string;
   title?: string;
   subtitle?: string;
 }
 
 export default function DatabaseLoadingOverlay({
-  title = "Connecting to database...",
-  subtitle = "Retrieving real-time records from MongoDB Atlas...",
+  text = "Syncing...",
+  title,
 }: DatabaseLoadingOverlayProps) {
-  const [isSlowResponse, setIsSlowResponse] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsSlowResponse(true);
-    }, 3200);
-
-    return () => clearTimeout(timer);
-  }, []);
+  const displayText = text || title || "Syncing...";
 
   return (
     <div
@@ -50,19 +43,7 @@ export default function DatabaseLoadingOverlay({
           />
         </svg>
 
-        <div className="db-loading-title">{title}</div>
-        <div className="db-loading-subtitle">{subtitle}</div>
-
-        <div className="db-loading-badge">
-          <span className="db-loading-dot" aria-hidden="true" />
-          <span>MongoDB Atlas Sync</span>
-        </div>
-
-        {isSlowResponse && (
-          <div className="db-loading-slow-hint">
-            The server is warming up from idle mode. Records will appear in a moment...
-          </div>
-        )}
+        <span className="db-sync-text">{displayText}</span>
       </div>
     </div>
   );

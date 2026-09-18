@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import type { SidebarTab } from "./DashboardSidebar";
 import DatabaseLoadingOverlay from "./DatabaseLoadingOverlay";
+import ClientsManager from "./ClientsManager";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -93,8 +94,119 @@ function formatEnquiryDateTime(dateStr?: string): { formatted: string; relative:
   return { formatted, relative };
 }
 
+interface ClientSummaryItem {
+  id: string;
+  completed?: boolean;
+}
+
+function ClientRingChart({
+  completed,
+  inProgress,
+  size = 104,
+  strokeWidth = 11,
+}: {
+  completed: number;
+  inProgress: number;
+  size?: number;
+  strokeWidth?: number;
+}) {
+  const total = completed + inProgress;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  const inProgressRatio = total > 0 ? inProgress / total : 0;
+  const completedRatio = total > 0 ? completed / total : 0;
+
+  const inProgressDash = inProgressRatio * circumference;
+  const completedDash = completedRatio * circumference;
+
+  // Rotation angles starting at 12 o'clock (-90 degrees)
+  const inProgressAngle = inProgressRatio * 360;
+
+  return (
+    <div
+      className="client-ring-chart-wrapper"
+      style={{ width: size, height: size }}
+      title={`Clients: ${inProgress} In Progress (${Math.round(inProgressRatio * 100 || 0)}%), ${completed} Completed (${Math.round(completedRatio * 100 || 0)}%)`}
+    >
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        className="client-ring-chart-svg"
+      >
+        {/* Subtle background track */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="#f1f5f9"
+          strokeWidth={strokeWidth}
+        />
+
+        {total > 0 ? (
+          <>
+            {/* In Progress segment (Orange) */}
+            {inProgress > 0 && (
+              <circle
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="none"
+                stroke="#ea580c"
+                strokeWidth={strokeWidth}
+                strokeDasharray={`${inProgressDash} ${circumference}`}
+                strokeDashoffset={0}
+                transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                strokeLinecap="butt"
+                style={{ transition: "stroke-dasharray 0.5s ease" }}
+              />
+            )}
+
+            {/* Completed segment (Green) */}
+            {completed > 0 && (
+              <circle
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="none"
+                stroke="#16a34a"
+                strokeWidth={strokeWidth}
+                strokeDasharray={`${completedDash} ${circumference}`}
+                strokeDashoffset={0}
+                transform={`rotate(${-90 + inProgressAngle} ${size / 2} ${size / 2})`}
+                strokeLinecap="butt"
+                style={{ transition: "stroke-dasharray 0.5s ease" }}
+              />
+            )}
+          </>
+        ) : (
+          /* Empty state subtle dashed circle */
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="#cbd5e1"
+            strokeWidth={strokeWidth}
+            strokeDasharray="4 4"
+          />
+        )}
+      </svg>
+
+      {/* Hollow center text */}
+      <div className="client-ring-chart-center">
+        <span className="client-ring-chart-number">{total}</span>
+        <span className="client-ring-chart-sub">Total</span>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardContent({
   activeTab,
+  onNavigateTab,
   user,
   onPendingCountChange,
 }: DashboardContentProps) {
@@ -110,6 +222,45 @@ export default function DashboardContent({
   );
   const [createError, setCreateError] = useState("");
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
+
+  // Client counts state for overview
+  const [clientsCount, setClientsCount] = useState<number>(0);
+  const [inProgressClientsCount, setInProgressClientsCount] = useState<number>(0);
+  const [completedClientsCount, setCompletedClientsCount] = useState<number>(0);
+
+  const getAdminAuthHeaders = useCallback((): Record<string, string> => {
+    const headers: Record<string, string> = {};
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("abc_admin_token");
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+    }
+    if (user?.id) {
+      headers["x-admin-id"] = user.id;
+      headers["x-admin-role"] = user.role || "worker_admin";
+      headers["x-admin-identifier"] = user.identifier || "";
+    }
+    return headers;
+  }, [user]);
+
+  const refreshClientsMetrics = useCallback(() => {
+    fetch(`${API_BASE_URL}/api/v1/admin/clients`, { headers: getAdminAuthHeaders() })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const list: ClientSummaryItem[] = data?.data?.clients || [];
+        setClientsCount(list.length);
+        setInProgressClientsCount(list.filter((c) => !c.completed).length);
+        setCompletedClientsCount(list.filter((c) => c.completed).length);
+      })
+      .catch(() => {});
+  }, [getAdminAuthHeaders]);
+
+  useEffect(() => {
+    refreshClientsMetrics();
+    window.addEventListener("abc_client_updated", refreshClientsMetrics);
+    return () => {
+      window.removeEventListener("abc_client_updated", refreshClientsMetrics);
+    };
+  }, [refreshClientsMetrics]);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -599,37 +750,10 @@ export default function DashboardContent({
     (activeTab === "enquiries" && isEnquiriesLoading) ||
     (activeTab === "overview" && isMaster && isEnquiriesLoading);
 
-  const getLoadingDetails = () => {
-    if (activeTab === "worker_admins") {
-      return {
-        title: "Loading Worker Admins...",
-        subtitle:
-          "Retrieving verified admin accounts from MongoDB 'user-admin' collection...",
-      };
-    }
-    if (activeTab === "enquiries") {
-      return {
-        title: "Loading Client Enquiries...",
-        subtitle:
-          "Retrieving incoming customer requests from MongoDB 'enquiry' collection...",
-      };
-    }
-    return {
-      title: "Synchronizing Database Records...",
-      subtitle:
-        "Connecting to database and calculating real-time overview metrics...",
-    };
-  };
-
   return (
     <main className="dashboard-main">
       {/* Real-time Database Loading Overlay */}
-      {isCurrentTabLoading && (
-        <DatabaseLoadingOverlay
-          title={getLoadingDetails().title}
-          subtitle={getLoadingDetails().subtitle}
-        />
-      )}
+      {isCurrentTabLoading && <DatabaseLoadingOverlay text="Syncing..." />}
 
       {/* -------------------------------------------------------------
           TAB: OVERVIEW
@@ -643,43 +767,194 @@ export default function DashboardContent({
             </p>
 
             <div className="enquiry-metrics-grid">
-              <div className="enquiry-metric-card">
+              {/* Clients Featured Metric Card */}
+              <div
+                className="enquiry-metric-card client-overview-big-card"
+                onClick={() => onNavigateTab?.("clients")}
+                style={{ cursor: "pointer" }}
+                title="View all clients"
+              >
+                <div className="client-big-card-content">
+                  <div className="client-big-card-left">
+                    <div className="enquiry-metric-header">
+                      <span className="enquiry-metric-label">Total Clients</span>
+                      <span className="client-big-card-tag">Overview</span>
+                    </div>
+                    <div className="client-big-metric-value">{clientsCount}</div>
+                    <div className="client-big-card-breakdown">
+                      <div className="client-breakdown-row orange-pill">
+                        <span className="legend-dot orange" />
+                        <span className="breakdown-label">In Progress:</span>
+                        <span className="breakdown-num orange">{inProgressClientsCount}</span>
+                      </div>
+                      <div className="client-breakdown-row green-pill">
+                        <span className="legend-dot green" />
+                        <span className="breakdown-label">Completed:</span>
+                        <span className="breakdown-num green">{completedClientsCount}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="client-big-card-right">
+                    <ClientRingChart
+                      completed={completedClientsCount}
+                      inProgress={inProgressClientsCount}
+                      size={104}
+                      strokeWidth={11}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Active Worker Admins Card */}
+              <div
+                className="enquiry-metric-card"
+                onClick={() => onNavigateTab?.("worker_admins")}
+                style={{ cursor: "pointer" }}
+                title="View worker admins"
+              >
                 <div className="enquiry-metric-header">
                   <span className="enquiry-metric-label">Active Worker Admins</span>
                   <span className="enquiry-metric-dot all" />
                 </div>
                 <span className="enquiry-metric-value">{workerAdmins.length}</span>
+                <span style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "2px" }}>
+                  Team accounts
+                </span>
               </div>
 
-              <div className="enquiry-metric-card">
+              {/* Total Enquiries Card */}
+              <div
+                className="enquiry-metric-card"
+                onClick={() => onNavigateTab?.("enquiries")}
+                style={{ cursor: "pointer" }}
+                title="View enquiries"
+              >
                 <div className="enquiry-metric-header">
                   <span className="enquiry-metric-label">Total Enquiries</span>
                   <span className="enquiry-metric-dot all" />
                 </div>
                 <span className="enquiry-metric-value">{totalCount}</span>
+                <span style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "2px" }}>
+                  Website enquiries
+                </span>
               </div>
 
-              <div className="enquiry-metric-card">
+              {/* Pending Response Card */}
+              <div
+                className="enquiry-metric-card"
+                onClick={() => onNavigateTab?.("enquiries")}
+                style={{ cursor: "pointer" }}
+                title="View pending enquiries"
+              >
                 <div className="enquiry-metric-header">
                   <span className="enquiry-metric-label">Pending Response</span>
                   <span className="enquiry-metric-dot pending" />
                 </div>
                 <span className="enquiry-metric-value">{pendingCount}</span>
+                <span style={{ fontSize: "0.74rem", color: "#d97706", marginTop: "2px" }}>
+                  Needs action
+                </span>
               </div>
 
-              <div className="enquiry-metric-card">
+              {/* Responded Enquiries Card */}
+              <div
+                className="enquiry-metric-card"
+                onClick={() => onNavigateTab?.("enquiries")}
+                style={{ cursor: "pointer" }}
+                title="View responded enquiries"
+              >
                 <div className="enquiry-metric-header">
                   <span className="enquiry-metric-label">Responded Enquiries</span>
                   <span className="enquiry-metric-dot responded" />
                 </div>
                 <span className="enquiry-metric-value">{respondedCount}</span>
+                <span style={{ fontSize: "0.74rem", color: "#059669", marginTop: "2px" }}>
+                  Resolved
+                </span>
               </div>
             </div>
           </>
         ) : (
-          <div style={{ minHeight: "300px" }}>
-            {/* Clean overview workspace for worker admin — awaiting further configuration */}
-          </div>
+          <>
+            <h1 className="content-title">Worker Admin Workspace</h1>
+            <p className="content-subtitle" style={{ marginBottom: "24px" }}>
+              Welcome back, {user?.name || user?.identifier || "Worker Admin"}. Overview of your assigned clients and platform enquiries.
+            </p>
+
+            <div className="enquiry-metrics-grid">
+              {/* Clients Featured Metric Card */}
+              <div
+                className="enquiry-metric-card client-overview-big-card"
+                onClick={() => onNavigateTab?.("clients")}
+                style={{ cursor: "pointer" }}
+                title="View assigned clients"
+              >
+                <div className="client-big-card-content">
+                  <div className="client-big-card-left">
+                    <div className="enquiry-metric-header">
+                      <span className="enquiry-metric-label">Assigned Clients</span>
+                      <span className="client-big-card-tag">Assigned</span>
+                    </div>
+                    <div className="client-big-metric-value">{clientsCount}</div>
+                    <div className="client-big-card-breakdown">
+                      <div className="client-breakdown-row orange-pill">
+                        <span className="legend-dot orange" />
+                        <span className="breakdown-label">In Progress:</span>
+                        <span className="breakdown-num orange">{inProgressClientsCount}</span>
+                      </div>
+                      <div className="client-breakdown-row green-pill">
+                        <span className="legend-dot green" />
+                        <span className="breakdown-label">Completed:</span>
+                        <span className="breakdown-num green">{completedClientsCount}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="client-big-card-right">
+                    <ClientRingChart
+                      completed={completedClientsCount}
+                      inProgress={inProgressClientsCount}
+                      size={104}
+                      strokeWidth={11}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Enquiries Card */}
+              <div
+                className="enquiry-metric-card"
+                onClick={() => onNavigateTab?.("enquiries")}
+                style={{ cursor: "pointer" }}
+                title="View enquiries"
+              >
+                <div className="enquiry-metric-header">
+                  <span className="enquiry-metric-label">Total Enquiries</span>
+                  <span className="enquiry-metric-dot all" />
+                </div>
+                <span className="enquiry-metric-value">{totalCount}</span>
+                <span style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "2px" }}>
+                  Platform leads
+                </span>
+              </div>
+
+              {/* Pending Enquiries Card */}
+              <div
+                className="enquiry-metric-card"
+                onClick={() => onNavigateTab?.("enquiries")}
+                style={{ cursor: "pointer" }}
+                title="View pending enquiries"
+              >
+                <div className="enquiry-metric-header">
+                  <span className="enquiry-metric-label">Pending Enquiries</span>
+                  <span className="enquiry-metric-dot pending" />
+                </div>
+                <span className="enquiry-metric-value">{pendingCount}</span>
+                <span style={{ fontSize: "0.74rem", color: "#d97706", marginTop: "2px" }}>
+                  Awaiting response
+                </span>
+              </div>
+            </div>
+          </>
         )
       )}
 
@@ -1143,6 +1418,13 @@ export default function DashboardContent({
             </table>
           </div>
         </>
+      )}
+
+      {/* -------------------------------------------------------------
+          TAB: CLIENTS & FILES (Master Admin & Worker Admins)
+          ------------------------------------------------------------- */}
+      {activeTab === "clients" && (
+        <ClientsManager user={user} isMaster={isMaster} />
       )}
 
       {/* -------------------------------------------------------------
