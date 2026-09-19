@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import type { SidebarTab } from "./DashboardSidebar";
 import DatabaseLoadingOverlay from "./DatabaseLoadingOverlay";
 import ClientsManager from "./ClientsManager";
+import WhatsAppEnquiriesManager from "./WhatsAppEnquiriesManager";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -58,6 +59,7 @@ interface DashboardContentProps {
     isFirstLogin?: boolean;
   } | null;
   onPendingCountChange?: (count: number) => void;
+  onPendingWhatsAppCountChange?: (count: number) => void;
 }
 
 function formatEnquiryDateTime(dateStr?: string): { formatted: string; relative: string } {
@@ -209,6 +211,7 @@ export default function DashboardContent({
   onNavigateTab,
   user,
   onPendingCountChange,
+  onPendingWhatsAppCountChange,
 }: DashboardContentProps) {
   const isMaster =
     user?.role === "master_admin" ||
@@ -227,6 +230,38 @@ export default function DashboardContent({
   const [clientsCount, setClientsCount] = useState<number>(0);
   const [inProgressClientsCount, setInProgressClientsCount] = useState<number>(0);
   const [completedClientsCount, setCompletedClientsCount] = useState<number>(0);
+  const [waOverviewCounts, setWaOverviewCounts] = useState<{
+    total: number;
+    pending: number;
+    responded: number;
+  }>({
+    total: 0,
+    pending: 0,
+    responded: 0,
+  });
+
+  // Fetch WhatsApp overview counts
+  useEffect(() => {
+    const fetchWa = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/v1/whatsapp/conversations`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.counts) {
+            setWaOverviewCounts({
+              total: json.counts.total || 0,
+              pending: json.counts.pending || 0,
+              responded: json.counts.responded || 0,
+            });
+            onPendingWhatsAppCountChange?.(json.counts.pending || 0);
+          }
+        }
+      } catch {
+        // Ignore
+      }
+    };
+    fetchWa();
+  }, [onPendingWhatsAppCountChange]);
 
   const getAdminAuthHeaders = useCallback((): Record<string, string> => {
     const headers: Record<string, string> = {};
@@ -751,7 +786,7 @@ export default function DashboardContent({
     (activeTab === "overview" && isMaster && isEnquiriesLoading);
 
   return (
-    <main className="dashboard-main">
+    <main className={`dashboard-main ${activeTab === "whatsapp_enquiries" ? "dashboard-main-whatsapp" : ""}`}>
       {/* Real-time Database Loading Overlay */}
       {isCurrentTabLoading && <DatabaseLoadingOverlay text="Syncing..." />}
 
@@ -856,20 +891,20 @@ export default function DashboardContent({
                 </span>
               </div>
 
-              {/* Responded Enquiries Card */}
+              {/* WhatsApp Enquiries Card */}
               <div
                 className="enquiry-metric-card"
-                onClick={() => onNavigateTab?.("enquiries")}
+                onClick={() => onNavigateTab?.("whatsapp_enquiries")}
                 style={{ cursor: "pointer" }}
-                title="View responded enquiries"
+                title="View WhatsApp live enquiries"
               >
                 <div className="enquiry-metric-header">
-                  <span className="enquiry-metric-label">Responded Enquiries</span>
-                  <span className="enquiry-metric-dot responded" />
+                  <span className="enquiry-metric-label">WhatsApp Enquiries</span>
+                  <span className="enquiry-metric-dot" style={{ backgroundColor: "#16a34a" }} />
                 </div>
-                <span className="enquiry-metric-value">{respondedCount}</span>
-                <span style={{ fontSize: "0.74rem", color: "#059669", marginTop: "2px" }}>
-                  Resolved
+                <span className="enquiry-metric-value">{waOverviewCounts.pending}</span>
+                <span style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "2px" }}>
+                  Responded: {waOverviewCounts.responded}
                 </span>
               </div>
             </div>
@@ -953,6 +988,23 @@ export default function DashboardContent({
                   Awaiting response
                 </span>
               </div>
+
+              {/* WhatsApp Enquiries Card */}
+              <div
+                className="enquiry-metric-card"
+                onClick={() => onNavigateTab?.("whatsapp_enquiries")}
+                style={{ cursor: "pointer" }}
+                title="View WhatsApp live enquiries"
+              >
+                <div className="enquiry-metric-header">
+                  <span className="enquiry-metric-label">WhatsApp Enquiries</span>
+                  <span className="enquiry-metric-dot" style={{ backgroundColor: "#16a34a" }} />
+                </div>
+                <span className="enquiry-metric-value">{waOverviewCounts.pending}</span>
+                <span style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "2px" }}>
+                  Responded: {waOverviewCounts.responded}
+                </span>
+              </div>
             </div>
           </>
         )
@@ -994,6 +1046,52 @@ export default function DashboardContent({
                 <path d="M16 21h5v-5" />
               </svg>
               <span>{isEnquiriesLoading ? "Refreshing..." : "Refresh"}</span>
+            </button>
+          </div>
+
+          {/* Switcher between Website Form Enquiries and WhatsApp Enquiries */}
+          <div
+            style={{
+              display: "inline-flex",
+              backgroundColor: "#f1f5f9",
+              borderRadius: "8px",
+              padding: "4px",
+              marginBottom: "20px",
+              gap: "4px",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            <button
+              type="button"
+              className="enquiry-filter-btn active"
+              style={{
+                borderRadius: "6px",
+                fontSize: "12px",
+                padding: "6px 14px",
+                fontWeight: "600",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <span>📋 Website Form Enquiries</span>
+              <span className="enquiry-filter-counter">{totalCount}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigateTab?.("whatsapp_enquiries")}
+              className="enquiry-filter-btn"
+              style={{
+                borderRadius: "6px",
+                fontSize: "12px",
+                padding: "6px 14px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <span>💬 WhatsApp Enquiries</span>
+              <span style={{ fontSize: "11px", color: "#16a34a", fontWeight: "600" }}>Live</span>
             </button>
           </div>
 
@@ -1418,6 +1516,16 @@ export default function DashboardContent({
             </table>
           </div>
         </>
+      )}
+
+      {/* -------------------------------------------------------------
+          TAB: WHATSAPP ENQUIRIES (Master Admin & Worker Admins)
+          ------------------------------------------------------------- */}
+      {activeTab === "whatsapp_enquiries" && (
+        <WhatsAppEnquiriesManager
+          user={user}
+          onPendingCountChange={onPendingWhatsAppCountChange}
+        />
       )}
 
       {/* -------------------------------------------------------------

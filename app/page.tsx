@@ -38,7 +38,27 @@ export default function Home() {
 
   const [activeTab, setActiveTab] = useState<SidebarTab>("overview");
   const [pendingEnquiriesCount, setPendingEnquiriesCount] = useState<number>(0);
+  const [pendingWhatsAppCount, setPendingWhatsAppCount] = useState<number>(0);
   const [hasDefaultedWorkerTab, setHasDefaultedWorkerTab] = useState(false);
+
+  // Fetch initial WhatsApp pending count
+  useEffect(() => {
+    const fetchWaCount = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const res = await fetch(`${apiUrl}/api/v1/whatsapp/conversations`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.counts) {
+            setPendingWhatsAppCount(json.counts.pending || 0);
+          }
+        }
+      } catch {
+        // Ignore network failure
+      }
+    };
+    fetchWaCount();
+  }, []);
 
   let user = null;
   try {
@@ -105,20 +125,22 @@ export default function Home() {
   }
 
   return (
-    <div className="dashboard-wrapper">
+    <div className={`dashboard-wrapper ${activeTab === "whatsapp_enquiries" ? "dashboard-wrapper-fixed" : ""}`}>
       <DashboardHeader user={user} onLogout={handleSignOut} />
-      <div className="dashboard-body">
+      <div className={`dashboard-body ${activeTab === "whatsapp_enquiries" ? "dashboard-body-fixed" : ""}`}>
         <DashboardSidebar
           activeTab={activeTab}
           onSelectTab={setActiveTab}
           isMaster={isMaster}
           pendingEnquiriesCount={pendingEnquiriesCount}
+          pendingWhatsAppCount={pendingWhatsAppCount}
         />
         <DashboardContent
           activeTab={activeTab}
           onNavigateTab={setActiveTab}
           user={user}
           onPendingCountChange={setPendingEnquiriesCount}
+          onPendingWhatsAppCountChange={setPendingWhatsAppCount}
         />
       </div>
     </div>
