@@ -29,6 +29,18 @@ export default function LoginPage() {
         <div className="login-form-side">
           <AdminLoginForm />
 
+          {/* Centered Mobile Bottom Logo (Visible on mobile only) */}
+          <div className="login-mobile-bottom-logo">
+            <Link
+              href="/"
+              className="hero-logo-link hero-logo-link-mobile"
+              aria-label="ABC Typing Admin Homepage"
+            >
+              <span className="hero-logo-text">abc</span>
+              <span className="hero-logo-dot" aria-hidden="true" />
+            </Link>
+          </div>
+
           <div style={{ height: "10px" }} />
         </div>
       </div>

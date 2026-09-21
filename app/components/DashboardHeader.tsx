@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import type { SidebarTab } from "./DashboardSidebar";
 
 interface DashboardHeaderProps {
   user: {
@@ -10,9 +11,18 @@ interface DashboardHeaderProps {
     name?: string;
   } | null;
   onLogout: () => void;
+  onToggleSidebar?: () => void;
+  isSidebarExpanded?: boolean;
+  onSelectTab?: (tab: SidebarTab) => void;
 }
 
-export default function DashboardHeader({ user, onLogout }: DashboardHeaderProps) {
+export default function DashboardHeader({
+  user,
+  onLogout,
+  onToggleSidebar,
+  isSidebarExpanded = false,
+  onSelectTab,
+}: DashboardHeaderProps) {
   const isMaster =
     user?.role === "master_admin" ||
     user?.role === "superadmin" ||
@@ -26,10 +36,37 @@ export default function DashboardHeader({ user, onLogout }: DashboardHeaderProps
 
   return (
     <header className="dashboard-header">
-      {/* Left side: clean abc logo only */}
+      {/* Left side: hamburger button on mobile, clean abc logo on desktop */}
       <div className="header-left">
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="header-hamburger-btn"
+          aria-label={isSidebarExpanded ? "Collapse navigation menu" : "Expand navigation menu"}
+          title={isSidebarExpanded ? "Collapse menu" : "Expand menu"}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          >
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+
         <Link
-          href="/"
+          href={isMaster ? "/?tab=overview" : "/?tab=enquiries"}
+          onClick={(e) => {
+            if (onSelectTab) {
+              e.preventDefault();
+              onSelectTab(isMaster ? "overview" : "enquiries");
+            }
+          }}
           className="header-logo-link"
           aria-label="ABC Typing Admin Homepage"
         >

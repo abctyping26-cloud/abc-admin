@@ -302,6 +302,22 @@ export default function DashboardContent({
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [newAdminPassword, setNewAdminPassword] = useState("");
 
+  // Mobile accordion card expansion tracking for Worker Admins (shrunken by default)
+  const [expandedWorkerAdminIds, setExpandedWorkerAdminIds] = useState<Set<string>>(new Set());
+
+  const toggleWorkerAdminExpand = (adminId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setExpandedWorkerAdminIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(adminId)) {
+        next.delete(adminId);
+      } else {
+        next.add(adminId);
+      }
+      return next;
+    });
+  };
+
   // First-time setup state for logged-in Worker Admin
   const isWorkerProfilePending =
     !isMaster &&
@@ -370,6 +386,22 @@ export default function DashboardContent({
   const [enquirySearch, setEnquirySearch] = useState<string>("");
   const [isEnquiriesLoading, setIsEnquiriesLoading] = useState(true);
   const [updatingEnquiryId, setUpdatingEnquiryId] = useState<string | null>(null);
+
+  // Mobile accordion card expansion tracking for Client Enquiries (shrunken by default)
+  const [expandedEnquiryIds, setExpandedEnquiryIds] = useState<Set<string>>(new Set());
+
+  const toggleEnquiryExpand = (enquiryId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setExpandedEnquiryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(enquiryId)) {
+        next.delete(enquiryId);
+      } else {
+        next.add(enquiryId);
+      }
+      return next;
+    });
+  };
 
   // Email Reply Modal State
   const [replyModalEnquiry, setReplyModalEnquiry] = useState<EnquiryItem | null>(null);
@@ -1049,8 +1081,9 @@ export default function DashboardContent({
             </button>
           </div>
 
-          {/* Switcher between Website Form Enquiries and WhatsApp Enquiries */}
+          {/* Switcher between Website Form Enquiries and WhatsApp Enquiries (Hidden on mobile) */}
           <div
+            className="enquiry-source-switcher"
             style={{
               display: "inline-flex",
               backgroundColor: "#f1f5f9",
@@ -1095,8 +1128,8 @@ export default function DashboardContent({
             </button>
           </div>
 
-          {/* Top 3 Summary Metrics */}
-          <div className="enquiry-metrics-grid">
+          {/* Top 3 Summary Metrics Cards (Desktop / Laptop view) */}
+          <div className="enquiry-metrics-grid client-enquiries-metrics-grid">
             <div className="enquiry-metric-card">
               <div className="enquiry-metric-header">
                 <span className="enquiry-metric-label">Total Inquiries</span>
@@ -1119,6 +1152,37 @@ export default function DashboardContent({
                 <span className="enquiry-metric-dot responded" />
               </div>
               <span className="enquiry-metric-value">{respondedCount}</span>
+            </div>
+          </div>
+
+          {/* Mobile Single Box with Row-by-Row Metrics (Mobile view only) */}
+          <div className="enquiry-single-summary-box">
+            <div className="enquiry-summary-row">
+              <div className="enquiry-summary-row-label">
+                <span className="enquiry-metric-dot all" />
+                <span>Total Inquiries :</span>
+              </div>
+              <span className="enquiry-summary-row-value">{totalCount}</span>
+            </div>
+
+            <div className="enquiry-summary-divider" />
+
+            <div className="enquiry-summary-row">
+              <div className="enquiry-summary-row-label">
+                <span className="enquiry-metric-dot pending" />
+                <span>Pending Action :</span>
+              </div>
+              <span className="enquiry-summary-row-value">{pendingCount}</span>
+            </div>
+
+            <div className="enquiry-summary-divider" />
+
+            <div className="enquiry-summary-row">
+              <div className="enquiry-summary-row-label">
+                <span className="enquiry-metric-dot responded" />
+                <span>Responded by Team :</span>
+              </div>
+              <span className="enquiry-summary-row-value">{respondedCount}</span>
             </div>
           </div>
 
@@ -1175,8 +1239,8 @@ export default function DashboardContent({
             </div>
           </div>
 
-          {/* Enquiries Table */}
-          <div className="admin-table-container">
+          {/* Enquiries Table (Desktop / Laptop view) */}
+          <div className="admin-table-container enquiries-table-container">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -1515,6 +1579,378 @@ export default function DashboardContent({
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Accordion Card View for Client Enquiries (Default shrunken, expands on chevron click) */}
+          <div className="enquiries-mobile-list">
+            {isEnquiriesLoading ? (
+              <div className="clients-empty-state">
+                <div className="db-spinner-svg" style={{ margin: "0 auto 12px" }}>
+                  <svg viewBox="0 0 24 24" fill="none" width="28" height="28">
+                    <circle cx="12" cy="12" r="10" stroke="#cbd5e1" strokeWidth="3" />
+                    <path d="M12 2a10 10 0 0 1 10 10" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <p>Loading enquiries...</p>
+              </div>
+            ) : filteredEnquiries.length === 0 ? (
+              <div className="clients-empty-state">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                <h3>No enquiries found</h3>
+                <p>
+                  {enquirySearch.trim()
+                    ? "No enquiries match your search query."
+                    : enquiryFilter === "pending"
+                    ? "No pending enquiries. All leads have been responded to!"
+                    : enquiryFilter === "responded"
+                    ? "No responded enquiries yet."
+                    : "No client enquiries received yet."}
+                </p>
+              </div>
+            ) : (
+              filteredEnquiries.map((item) => {
+                const isExpanded = expandedEnquiryIds.has(item._id);
+                const initials = (item.name || "Client")
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase();
+                const timeMeta = formatEnquiryDateTime(item.submittedAt || item.createdAt);
+                const respondedTimeMeta = item.respondedAt
+                  ? formatEnquiryDateTime(item.respondedAt)
+                  : null;
+                const cleanPhone = item.phone.replace(/[^0-9+]/g, "");
+                const isResponded = item.status === "responded";
+                const isCurrentUpdating = updatingEnquiryId === item._id;
+
+                return (
+                  <div
+                    key={`mobile-enquiry-${item._id}`}
+                    className={`client-mobile-card ${isExpanded ? "is-expanded" : ""}`}
+                  >
+                    {/* Shrunken Header: Avatar, Name, Status Pill & Angle Down Chevron */}
+                    <div
+                      className="client-mobile-card-header"
+                      onClick={(e) => toggleEnquiryExpand(item._id, e)}
+                    >
+                      <div className="client-mobile-header-left">
+                        <div className="admin-avatar-photo">
+                          {initials}
+                        </div>
+                        <span className="client-mobile-name">
+                          {item.name}
+                        </span>
+                      </div>
+
+                      <div className="client-mobile-header-right">
+                        <span
+                          className={`enquiry-status-pill ${
+                            isResponded ? "responded" : "pending"
+                          }`}
+                          style={{ fontSize: "0.72rem", padding: "2px 8px" }}
+                        >
+                          <span
+                            style={{
+                              width: "6px",
+                              height: "6px",
+                              borderRadius: "50%",
+                              backgroundColor: isResponded ? "#16a34a" : "#d97706",
+                            }}
+                          />
+                          {isResponded ? "Responded" : "Pending"}
+                        </span>
+                        <button
+                          type="button"
+                          className={`client-mobile-expand-btn ${isExpanded ? "rotated" : ""}`}
+                          onClick={(e) => toggleEnquiryExpand(item._id, e)}
+                          aria-label={isExpanded ? "Collapse details" : "Expand details"}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="6 9 12 15 18 9" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expanded Body: All enquiry details */}
+                    {isExpanded && (
+                      <div className="client-mobile-card-body">
+                        {/* Phone & Quick Contact */}
+                        <div className="client-mobile-detail-row">
+                          <span className="detail-label">Phone &amp; Contact</span>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: "8px",
+                            }}
+                          >
+                            <span className="detail-value">{item.phone}</span>
+                            <div className="enquiry-phone-group" style={{ margin: 0 }}>
+                              <a
+                                href={`tel:${cleanPhone}`}
+                                className="enquiry-contact-btn"
+                                title={`Call ${item.phone}`}
+                                aria-label={`Call ${item.name}`}
+                              >
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                                </svg>
+                              </a>
+
+                              <a
+                                href={`https://wa.me/${cleanPhone.replace("+", "")}?text=Hello%20${encodeURIComponent(
+                                  item.name
+                                )}%2C%20thank%20you%20for%20reaching%20out%20to%20ABC%20Typing%20regarding%20${encodeURIComponent(
+                                  item.service
+                                )}.`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="enquiry-contact-btn whatsapp"
+                                title="Chat on WhatsApp"
+                                aria-label={`WhatsApp ${item.name}`}
+                              >
+                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                                </svg>
+                              </a>
+
+                              {item.email && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenReplyModal(item)}
+                                  className="enquiry-contact-btn"
+                                  style={{ color: "#38bdf8" }}
+                                  title={`Send email reply to ${item.email}`}
+                                  aria-label={`Email reply to ${item.name}`}
+                                >
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <rect width="20" height="16" x="2" y="4" rx="2" />
+                                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Email Address */}
+                        {item.email && (
+                          <div className="client-mobile-detail-row">
+                            <span className="detail-label">Email Address</span>
+                            <span className="detail-value">
+                              <a
+                                href={`mailto:${item.email}`}
+                                style={{
+                                  color: "#0284c7",
+                                  textDecoration: "none",
+                                  fontWeight: "500",
+                                }}
+                              >
+                                {item.email}
+                              </a>
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Service Requested */}
+                        <div className="client-mobile-detail-row">
+                          <span className="detail-label">Service Requested</span>
+                          <div className="detail-value" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            <span className="enquiry-service-badge" style={{ width: "fit-content" }}>
+                              {item.service}
+                            </span>
+                            {item.otherService && (
+                              <span className="enquiry-client-note">
+                                Note: {item.otherService}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Submitted Time */}
+                        <div className="client-mobile-detail-row">
+                          <span className="detail-label">Submitted Time</span>
+                          <span className="detail-value">
+                            {timeMeta.formatted}
+                            {timeMeta.relative && ` (${timeMeta.relative})`}
+                          </span>
+                        </div>
+
+                        {/* Team Response Status */}
+                        <div className="client-mobile-detail-row">
+                          <span className="detail-label">Team Response Status</span>
+                          <div className="detail-value" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            <span
+                              className={`enquiry-status-pill ${
+                                isResponded ? "responded" : "pending"
+                              }`}
+                              style={{ width: "fit-content" }}
+                            >
+                              <span
+                                style={{
+                                  width: "6px",
+                                  height: "6px",
+                                  borderRadius: "50%",
+                                  backgroundColor: isResponded ? "#16a34a" : "#d97706",
+                                }}
+                              />
+                              {isResponded ? "Responded" : "Pending Response"}
+                            </span>
+                            {isResponded ? (
+                              <span className="enquiry-responder-meta" style={{ marginTop: "2px" }}>
+                                Responded by <strong>{item.respondedBy || "Team Member"}</strong>
+                                {respondedTimeMeta && ` on ${respondedTimeMeta.formatted}`}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
+                                Awaiting response
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            marginTop: "6px",
+                            paddingTop: "10px",
+                            borderTop: "1px solid #f1f5f9",
+                          }}
+                        >
+                          {item.email && (
+                            <button
+                              type="button"
+                              className="flat-secondary-btn"
+                              style={{
+                                flex: 1,
+                                padding: "8px 12px",
+                                fontSize: "12px",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "4px",
+                                color: "#0284c7",
+                                borderColor: "rgba(2, 132, 199, 0.3)",
+                              }}
+                              onClick={() => handleOpenReplyModal(item)}
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{ width: "13px", height: "13px" }}
+                              >
+                                <rect width="20" height="16" x="2" y="4" rx="2" />
+                                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                              </svg>
+                              <span>Reply</span>
+                            </button>
+                          )}
+
+                          {!isResponded ? (
+                            <button
+                              type="button"
+                              className="enquiry-action-btn-respond"
+                              style={{ flex: 1, padding: "8px 12px", fontSize: "12px", justifyContent: "center" }}
+                              onClick={() => handleToggleEnquiryResponded(item)}
+                              disabled={isCurrentUpdating}
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{ width: "13px", height: "13px" }}
+                              >
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                              <span>{isCurrentUpdating ? "Saving..." : "Mark Responded"}</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="enquiry-action-btn-reopen"
+                              style={{ flex: 1, padding: "8px 12px", fontSize: "12px", justifyContent: "center" }}
+                              onClick={() => handleToggleEnquiryResponded(item)}
+                              disabled={isCurrentUpdating}
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{ width: "13px", height: "13px" }}
+                              >
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                <path d="M3 3v5h5" />
+                              </svg>
+                              <span>Reopen</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            className="table-action-btn delete"
+                            style={{ width: "36px", height: "36px", flexShrink: 0 }}
+                            onClick={() => handleDeleteEnquiry(item._id)}
+                            title="Delete enquiry"
+                            aria-label={`Delete enquiry from ${item.name}`}
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
         </>
       )}
 
@@ -1565,7 +2001,7 @@ export default function DashboardContent({
           </div>
 
           {/* Admin Table */}
-          <div className="admin-table-container">
+          <div className="admin-table-container worker-admins-table-container">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -1765,6 +2201,171 @@ export default function DashboardContent({
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Accordion Card View for Worker Admins (Default shrunken, expands on chevron click) */}
+          <div className="worker-admins-mobile-list">
+            {isLoadingWorkers ? (
+              <div className="clients-empty-state">
+                <div className="db-spinner-svg" style={{ margin: "0 auto 12px" }}>
+                  <svg viewBox="0 0 24 24" fill="none" width="28" height="28">
+                    <circle cx="12" cy="12" r="10" stroke="#cbd5e1" strokeWidth="3" />
+                    <path d="M12 2a10 10 0 0 1 10 10" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <p>Loading worker admins...</p>
+              </div>
+            ) : workerAdmins.length === 0 ? (
+              <div className="clients-empty-state">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                </svg>
+                <h3>No admin users found</h3>
+                <p>Click &apos;Create Admin User&apos; to add a new worker admin.</p>
+              </div>
+            ) : (
+              workerAdmins.map((admin) => {
+                const isExpanded = expandedWorkerAdminIds.has(admin.id);
+                const hasCompleted = Boolean(admin.profileCompleted && admin.name);
+                const initials = hasCompleted
+                  ? admin
+                      .name!.split(" ")
+                      .filter(Boolean)
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()
+                  : admin.identifier.slice(0, 1).toUpperCase();
+
+                return (
+                  <div
+                    key={`mobile-worker-${admin.id}`}
+                    className={`client-mobile-card ${isExpanded ? "is-expanded" : ""}`}
+                  >
+                    {/* Shrunken Header: Name, Avatar, Status Pill & Angle Down Chevron */}
+                    <div
+                      className="client-mobile-card-header"
+                      onClick={(e) => toggleWorkerAdminExpand(admin.id, e)}
+                    >
+                      <div className="client-mobile-header-left">
+                        <div className="admin-avatar-photo">
+                          {initials || "A"}
+                        </div>
+                        <span className="client-mobile-name">
+                          {hasCompleted ? admin.name : "Setup Pending"}
+                        </span>
+                      </div>
+
+                      <div className="client-mobile-header-right">
+                        <span
+                          className={`status-pill ${
+                            admin.status === "active" ? "active" : "inactive"
+                          }`}
+                          style={{ fontSize: "0.72rem", padding: "2px 8px" }}
+                        >
+                          {admin.status === "active" ? "Active" : "Inactive"}
+                        </span>
+                        <button
+                          type="button"
+                          className={`client-mobile-expand-btn ${isExpanded ? "rotated" : ""}`}
+                          onClick={(e) => toggleWorkerAdminExpand(admin.id, e)}
+                          aria-label={isExpanded ? "Collapse details" : "Expand details"}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="6 9 12 15 18 9" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expanded Body: All Details matching Laptop view */}
+                    {isExpanded && (
+                      <div className="client-mobile-card-body">
+                        {/* Identifier / Email */}
+                        <div className="client-mobile-detail-row">
+                          <span className="detail-label">Admin Email</span>
+                          <span className="detail-value mono">{admin.identifier}</span>
+                        </div>
+
+                        {/* Setup Status */}
+                        <div className="client-mobile-detail-row">
+                          <span className="detail-label">Profile Setup</span>
+                          <div className="detail-value">
+                            <span
+                              className={`setup-pill ${
+                                hasCompleted ? "completed" : "pending"
+                              }`}
+                            >
+                              {hasCompleted ? "Completed" : "Pending"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Location */}
+                        <div className="client-mobile-detail-row">
+                          <span className="detail-label">Location</span>
+                          <span className="detail-value">
+                            {admin.location || "—"}
+                          </span>
+                        </div>
+
+                        {/* Device Info */}
+                        {admin.deviceInfo && (
+                          <div className="client-mobile-detail-row">
+                            <span className="detail-label">Device</span>
+                            <span className="detail-value">
+                              {admin.deviceInfo}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Last Login */}
+                        <div className="client-mobile-detail-row">
+                          <span className="detail-label">Last Login</span>
+                          <span className="detail-value">
+                            {admin.lastLoginAt ? (
+                              `${new Date(admin.lastLoginAt).toLocaleDateString("en-GB", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })} at ${new Date(admin.lastLoginAt).toLocaleTimeString("en-US", {
+                                hour: "numeric",
+                                minute: "2-digit",
+                                hour12: true,
+                              })}`
+                            ) : (
+                              "Never"
+                            )}
+                          </span>
+                        </div>
+
+                        {/* Status */}
+                        <div className="client-mobile-detail-row">
+                          <span className="detail-label">Account Status</span>
+                          <div className="detail-value">
+                            <span
+                              className={`status-pill ${
+                                admin.status === "active" ? "active" : "inactive"
+                              }`}
+                            >
+                              {admin.status === "active" ? "Active" : "Inactive"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </>
       )}

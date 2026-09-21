@@ -450,8 +450,15 @@
   text-align: center;
 }
 
+/* Mobile bottom logo: hidden on desktop / laptop view */
+.login-mobile-bottom-logo {
+  display: none;
+}
+
 /* ==========================================================================
    Responsive Adaptations
+   - Desktop / Laptop view (> 900px) remains completely untouched
+   - Mobile view (<= 900px) is clean, minimalist, pure white with no box borders
    ========================================================================== */
 @media (max-width: 1080px) {
   .login-image-side {
@@ -464,59 +471,129 @@
 }
 
 @media (max-width: 900px) {
+  .login-page-wrapper {
+    min-height: 100dvh;
+    background-color: #ffffff;
+    padding: 0;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  /* Remove box border, shadow, margin, and border-radius for clean mobile aesthetic */
   .login-box {
-    flex-direction: column;
-    min-height: auto;
-    margin: 16px;
-    width: calc(100% - 32px);
-    border-radius: 20px;
-  }
-
-  .login-image-side {
-    flex: none;
+    margin: 0;
     width: 100%;
-    min-height: 280px;
-    padding: 28px 24px;
-    gap: 24px;
+    min-height: 100dvh;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background-color: #ffffff;
   }
 
-  .login-image-title {
-    font-size: 1.7rem;
+  /* Prevent AOS scroll offset flickering on full-screen mobile */
+  .login-box[data-aos] {
+    opacity: 1 !important;
+    transform: none !important;
   }
 
-  .login-image-desc {
+  /* Hide photo side completely on mobile */
+  .login-image-side {
     display: none;
   }
 
+  /* Clean full-bleed form section */
   .login-form-side {
-    flex: none;
+    flex: 1 1 auto;
     width: 100%;
-    padding: 32px 24px;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 32px 24px max(24px, env(safe-area-inset-bottom, 24px));
+    box-sizing: border-box;
+    background-color: #ffffff;
   }
 
+  /* Form container vertically centered */
   .login-form-container {
-    max-width: 100%;
-    padding: 10px 0;
+    max-width: 380px;
+    width: 100%;
+    margin: auto 0;
+    padding: 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* Center the sign in heading directly above inputs */
+  .login-form-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+  }
+
+  .login-title {
+    text-align: center;
+    font-size: 1.75rem;
+    color: #0f172a;
+    letter-spacing: -0.025em;
+  }
+
+  /* Center bottom edge logo for mobile view */
+  .login-mobile-bottom-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-top: auto;
+    padding-top: 20px;
+    padding-bottom: 4px;
+  }
+
+  .login-mobile-bottom-logo .hero-logo-link {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 2px;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .login-mobile-bottom-logo .hero-logo-text {
+    font-family: 'Plus Jakarta Sans', 'Inter', var(--font-family, sans-serif);
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: -0.06em;
+    color: #0f172a !important;
+    line-height: 1;
+  }
+
+  .login-mobile-bottom-logo .hero-logo-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background-color: var(--accent-blue, #1868db);
+    border-radius: 50%;
+    margin-left: 2px;
   }
 }
 
 @media (max-width: 480px) {
-  .login-box {
-    margin: 12px;
-    width: calc(100% - 24px);
-    border-radius: 16px;
-  }
-
-  .login-image-side {
-    min-height: 220px;
-    padding: 20px 16px;
-  }
-
   .login-form-side {
-    padding: 24px 16px;
+    padding: 24px 20px max(20px, env(safe-area-inset-bottom, 20px));
   }
 
   .login-title {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
+  }
+
+  .login-form-container {
+    max-width: 100%;
   }
 }

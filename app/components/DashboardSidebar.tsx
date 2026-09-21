@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 
 export type SidebarTab =
   | "overview"
@@ -15,6 +16,8 @@ interface DashboardSidebarProps {
   isMaster?: boolean;
   pendingEnquiriesCount?: number;
   pendingWhatsAppCount?: number;
+  isExpanded?: boolean;
+  onCollapse?: () => void;
 }
 
 export default function DashboardSidebar({
@@ -23,9 +26,38 @@ export default function DashboardSidebar({
   isMaster = true,
   pendingEnquiriesCount = 0,
   pendingWhatsAppCount = 0,
+  isExpanded = false,
+  onCollapse,
 }: DashboardSidebarProps) {
   return (
-    <aside className="dashboard-sidebar" aria-label="Admin Navigation">
+    <aside
+      className={`dashboard-sidebar ${isExpanded ? "is-expanded" : ""}`}
+      aria-label="Admin Navigation"
+    >
+      {/* Mobile-only Header with Collapse / X Button */}
+      <div className="sidebar-mobile-header">
+        <span className="sidebar-mobile-title">Menu</span>
+        <button
+          type="button"
+          onClick={onCollapse}
+          className="sidebar-collapse-btn"
+          aria-label="Collapse sidebar to icon rail"
+          title="Collapse"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
       <nav className="sidebar-nav">
         {/* Overview */}
         <button
@@ -153,6 +185,22 @@ export default function DashboardSidebar({
           )}
         </button>
       </nav>
+
+      {/* Centered abc logo at bottom of expanded sidebar */}
+      <div className="sidebar-bottom-logo">
+        <Link
+          href={isMaster ? "/?tab=overview" : "/?tab=enquiries"}
+          onClick={(e) => {
+            e.preventDefault();
+            onSelectTab(isMaster ? "overview" : "enquiries");
+          }}
+          className="sidebar-logo-link"
+          aria-label="ABC Typing Admin Homepage"
+        >
+          <span className="sidebar-logo-text">abc</span>
+          <span className="sidebar-logo-dot" aria-hidden="true" />
+        </Link>
+      </div>
     </aside>
   );
 }

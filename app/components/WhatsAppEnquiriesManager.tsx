@@ -42,6 +42,28 @@ export interface ActiveConversationDetail {
   customerName: string;
   isWindowOpen: boolean;
   lastIncomingTime: string | null;
+  totalMessages?: number;
+  firstMessageTime?: string | null;
+  lastMessageTime?: string | null;
+  linkedClient?: {
+    _id?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    pin?: string;
+    completed?: boolean;
+    source?: string;
+    createdAt?: string;
+  } | null;
+  linkedEnquiry?: {
+    _id?: string;
+    name?: string;
+    email?: string;
+    service?: string;
+    status?: string;
+    submittedAt?: string;
+  } | null;
   messages: WhatsAppMessageItem[];
 }
 
@@ -103,7 +125,51 @@ export default function WhatsAppEnquiriesManager({
   const [editCategory, setEditCategory] = useState("");
   const [isUpdatingReply, setIsUpdatingReply] = useState(false);
 
+  // Mobile specific state
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const settingsMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Customer details modal popup state
+  const [showUserDetailsModal, setShowUserDetailsModal] = useState(false);
+  const [copiedPhone, setCopiedPhone] = useState(false);
+
+  const handleCopyPhone = (phone: string) => {
+    navigator.clipboard.writeText(`+${phone}`);
+    setCopiedPhone(true);
+    setTimeout(() => setCopiedPhone(false), 2000);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowUserDetailsModal(false);
+      }
+    };
+    if (showUserDetailsModal) {
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showUserDetailsModal]);
+
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Close settings dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target as Node)) {
+        setShowSettingsMenu(false);
+      }
+    };
+    if (showSettingsMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showSettingsMenu]);
 
   // Auto-scroll strictly inside the chat container (keeps page static without jumping)
   useEffect(() => {
@@ -285,6 +351,7 @@ export default function WhatsAppEnquiriesManager({
     const clean = directPhoneInput.replace(/\D/g, "");
     if (!clean) return;
     setSelectedPhone(clean);
+    setMobileChatOpen(true);
     setDirectPhoneInput("");
     setShowDirectPhoneBox(false);
   };
@@ -472,23 +539,106 @@ export default function WhatsAppEnquiriesManager({
     }
   };
 
+  const currentConversation = conversations.find(
+    (c) =>
+      c.customerPhone === selectedPhone ||
+      c.customerPhone === selectedPhone?.replace(/\D/g, "")
+  );
+
   return (
-    <div className="wa-manager-root">
+    <div className={`wa-manager-root ${mobileChatOpen ? "wa-mobile-chat-active" : ""}`}>
       {/* Header Row */}
-      <div className="content-header-row">
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <h1 className="content-title" style={{ margin: 0 }}>
-              WhatsApp Enquiries
-            </h1>
-            <span className="wa-status-badge live">
+      <div className={`content-header-row wa-header-row ${mobileChatOpen ? "wa-hide-on-mobile-chat" : ""}`}>
+        <div className="wa-header-left-col">
+          <div className="wa-title-wrapper" ref={settingsMenuRef}>
+            <div
+              className="wa-title-click-area"
+              onClick={() => setShowSettingsMenu((v) => !v)}
+              role="button"
+              tabIndex={0}
+              title="Tap for options"
+            >
+              <h1 className="content-title" style={{ margin: 0 }}>
+                WhatsApp Enquiries
+              </h1>
+              <button
+                type="button"
+                className={`wa-settings-icon-btn ${showSettingsMenu ? "active" : ""}`}
+                aria-label="Settings"
+                title="WhatsApp Options"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowSettingsMenu((v) => !v);
+                }}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ width: "19px", height: "19px" }}
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Live-Sync Capsule: Desktop Only (Hidden on Mobile) */}
+            <span className="wa-status-badge live wa-desktop-only">
               <span className={`wa-pulse-dot ${isAutoPoll ? "pulsing" : "paused"}`} />
               {isAutoPoll ? "Live-Sync ON" : "Live-Sync Paused"}
             </span>
+
+            {/* Dropdown Menu (on mobile/desktop when title or gear clicked) */}
+            {showSettingsMenu && (
+              <div className="wa-settings-dropdown-menu">
+                <button
+                  type="button"
+                  className="wa-dropdown-item"
+                  onClick={() => {
+                    setActiveView((v) => (v === "replies" ? "chats" : "replies"));
+                    setMobileChatOpen(false);
+                    setShowSettingsMenu(false);
+                  }}
+                >
+                  <span className="wa-dropdown-icon">⚡</span>
+                  <span>{activeView === "replies" ? "💬 Back to Chats" : "Quick Replies"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="wa-dropdown-item"
+                  onClick={() => {
+                    handleSyncWaba();
+                    setShowSettingsMenu(false);
+                  }}
+                  disabled={isSubscribing}
+                >
+                  <span className="wa-dropdown-icon">🔗</span>
+                  <span>{isSubscribing ? "Linking..." : "Link Meta WABA"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="wa-dropdown-item"
+                  onClick={() => {
+                    setIsAutoPoll((p) => !p);
+                    setShowSettingsMenu(false);
+                  }}
+                >
+                  <span className="wa-dropdown-icon">{isAutoPoll ? "⏸" : "▶"}</span>
+                  <span>{isAutoPoll ? "Pause Auto-Sync" : "Resume Auto-Sync"}</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        {/* Desktop Header Buttons (hidden on mobile) */}
+        <div className="wa-desktop-action-buttons">
           {/* Quick Replies Manager Button (Left of Link Meta WABA) */}
           <button
             type="button"
@@ -804,13 +954,11 @@ export default function WhatsAppEnquiriesManager({
           </div>
         </div>
       ) : (
-        /* Main Split Layout */
-        <div className="wa-split-container">
-          {/* Left Column: Conversation List */}
-          <aside className="wa-conversations-list">
-            {/* Header with Search & Direct Contact Plus Button */}
-            <div className="wa-list-header">
-              <div className="wa-list-search-row">
+        <div className="wa-content-area">
+          {/* Mobile Standalone Search Bar & Direct Contact Plus Button (Visible on Mobile when Chat is Closed) */}
+          {!mobileChatOpen && (
+            <div className="wa-mobile-search-section">
+              <div className="wa-mobile-search-bar-row">
                 <div className="wa-list-search-wrapper">
                   <svg
                     className="wa-list-search-icon"
@@ -866,9 +1014,9 @@ export default function WhatsAppEnquiriesManager({
                 </button>
               </div>
 
-              {/* Direct Phone Input Drawer */}
+              {/* Direct Phone Input Drawer (Mobile) */}
               {showDirectPhoneBox && (
-                <form onSubmit={handleStartDirectChat} className="wa-list-direct-box">
+                <form onSubmit={handleStartDirectChat} className="wa-list-direct-box wa-mobile-direct-box">
                   <input
                     type="text"
                     placeholder="Phone with country code (e.g. 971501234567)"
@@ -891,9 +1039,11 @@ export default function WhatsAppEnquiriesManager({
                 </form>
               )}
             </div>
+          )}
 
-            {/* Scrollable Conversation Cards */}
-            <div className="wa-conversations-scroll">
+          {/* Mobile Conversations Cards List (Rendered on mobile like other sections with angle chevron) */}
+          {!mobileChatOpen && (
+            <div className="wa-mobile-conversations-list">
               {isLoadingList && conversations.length === 0 ? (
                 <div className="wa-list-empty">Loading WhatsApp conversations...</div>
               ) : filteredConversations.length === 0 ? (
@@ -902,43 +1052,32 @@ export default function WhatsAppEnquiriesManager({
                 </div>
               ) : (
                 filteredConversations.map((conv) => {
-                  const isSelected = selectedPhone === conv.customerPhone;
+                  const displayName = conv.customerName || `+${conv.customerPhone}`;
                   return (
                     <div
-                      key={conv.customerPhone}
-                      onClick={() => setSelectedPhone(conv.customerPhone)}
-                      className={`wa-conversation-card ${isSelected ? "selected" : ""}`}
+                      key={`mob-${conv.customerPhone}`}
+                      className="client-mobile-card wa-client-mobile-card"
+                      onClick={() => {
+                        setSelectedPhone(conv.customerPhone);
+                        setMobileChatOpen(true);
+                      }}
                     >
-                      <div className="wa-card-avatar">
-                        <span>{conv.customerName ? conv.customerName.charAt(0).toUpperCase() : "💬"}</span>
-                        <span className="wa-avatar-badge" />
-                      </div>
-
-                      <div className="wa-card-content">
-                        <div className="wa-card-top-row">
-                          <span className="wa-card-title">
-                            {conv.customerName || `+${conv.customerPhone}`}
-                          </span>
-                          <span className="wa-card-time">
-                            {formatRelativeTime(conv.lastTimestamp)}
-                          </span>
-                        </div>
-
-                        <div className="wa-card-phone">+{conv.customerPhone}</div>
-
-                        <p className="wa-card-snippet">
-                          {conv.lastDirection === "outgoing" ? (
-                            <span className="wa-msg-direction-icon">You: </span>
-                          ) : null}
-                          {conv.lastMessageType !== "text" ? `[${conv.lastMessageType}] ` : ""}
-                          {conv.lastMessage || "Media message"}
-                        </p>
-
-                        <div className="wa-card-bottom-row">
-                          <span className={`wa-pill ${conv.isPending ? "pending" : "responded"}`}>
-                            {conv.isPending ? "Pending Action" : "Responded"}
-                          </span>
-                          <span className="wa-msg-count-tag">{conv.totalMessages} msgs</span>
+                      <div className="client-mobile-card-header">
+                        <span className="client-mobile-name">
+                          {displayName}
+                        </span>
+                        <div className="wa-mobile-angle-btn">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            style={{ width: "18px", height: "18px" }}
+                          >
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
                         </div>
                       </div>
                     </div>
@@ -946,212 +1085,404 @@ export default function WhatsAppEnquiriesManager({
                 })
               )}
             </div>
-          </aside>
+          )}
 
-          {/* Right Column: Live Chat & Reply Engine */}
-          <main className="wa-chat-view">
-            {selectedPhone ? (
-              <>
-                {/* Chat Header */}
-                <div className="wa-chat-header">
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div className="wa-chat-header-avatar">
-                      {activeChat?.customerName
-                        ? activeChat.customerName.charAt(0).toUpperCase()
-                        : "💬"}
-                    </div>
-                    <div>
+          {/* Main Split Layout */}
+          <div className={`wa-split-container ${mobileChatOpen ? "wa-mobile-chat-open" : ""}`}>
+            {/* Left Column: Conversation List (Desktop) */}
+            <aside className="wa-conversations-list wa-desktop-only-flex">
+              {/* Header with Search & Direct Contact Plus Button */}
+              <div className="wa-list-header">
+                <div className="wa-list-search-row">
+                  <div className="wa-list-search-wrapper">
+                    <svg
+                      className="wa-list-search-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="11" cy="11" r="8" />
+                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder="Search or enter phone..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="wa-list-search-input"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        className="wa-list-search-clear"
+                        title="Clear search"
+                      >
+                        &times;
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Direct Contact Plus Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowDirectPhoneBox((v) => !v)}
+                    className={`wa-list-plus-btn ${showDirectPhoneBox ? "active" : ""}`}
+                    title="Direct chat with phone number"
+                    aria-label="Direct Chat"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={{ width: "16px", height: "16px" }}
+                    >
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Direct Phone Input Drawer */}
+                {showDirectPhoneBox && (
+                  <form onSubmit={handleStartDirectChat} className="wa-list-direct-box">
+                    <input
+                      type="text"
+                      placeholder="Phone with country code (e.g. 971501234567)"
+                      value={directPhoneInput}
+                      onChange={(e) => setDirectPhoneInput(e.target.value)}
+                      className="wa-list-direct-input"
+                      autoFocus
+                    />
+                    <button type="submit" className="wa-list-direct-submit">
+                      Chat
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowDirectPhoneBox(false)}
+                      className="wa-list-direct-cancel"
+                      title="Cancel"
+                    >
+                      &times;
+                    </button>
+                  </form>
+                )}
+              </div>
+
+              {/* Scrollable Conversation Cards */}
+              <div className="wa-conversations-scroll">
+                {isLoadingList && conversations.length === 0 ? (
+                  <div className="wa-list-empty">Loading WhatsApp conversations...</div>
+                ) : filteredConversations.length === 0 ? (
+                  <div className="wa-list-empty">
+                    {searchQuery ? "No conversations match your search." : "No WhatsApp enquiries found."}
+                  </div>
+                ) : (
+                  filteredConversations.map((conv) => {
+                    const isSelected = selectedPhone === conv.customerPhone;
+                    return (
+                      <div
+                        key={conv.customerPhone}
+                        onClick={() => setSelectedPhone(conv.customerPhone)}
+                        className={`wa-conversation-card ${isSelected ? "selected" : ""}`}
+                      >
+                        <div className="wa-card-avatar">
+                          <span>{conv.customerName ? conv.customerName.charAt(0).toUpperCase() : "💬"}</span>
+                          <span className="wa-avatar-badge" />
+                        </div>
+
+                        <div className="wa-card-content">
+                          <div className="wa-card-top-row">
+                            <span className="wa-card-title">
+                              {conv.customerName || `+${conv.customerPhone}`}
+                            </span>
+                            <span className="wa-card-time">
+                              {formatRelativeTime(conv.lastTimestamp)}
+                            </span>
+                          </div>
+
+                          <div className="wa-card-phone">+{conv.customerPhone}</div>
+
+                          <p className="wa-card-snippet">
+                            {conv.lastDirection === "outgoing" ? (
+                              <span className="wa-msg-direction-icon">You: </span>
+                            ) : null}
+                            {conv.lastMessageType !== "text" ? `[${conv.lastMessageType}] ` : ""}
+                            {conv.lastMessage || "Media message"}
+                          </p>
+
+                          <div className="wa-card-bottom-row">
+                            <span className={`wa-pill ${conv.isPending ? "pending" : "responded"}`}>
+                              {conv.isPending ? "Pending Action" : "Responded"}
+                            </span>
+                            <span className="wa-msg-count-tag">{conv.totalMessages} msgs</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </aside>
+
+            {/* Right Column: Live Chat & Reply Engine */}
+            <main className="wa-chat-view">
+              {selectedPhone ? (
+                <>
+                  {/* Chat Header */}
+                  <div className="wa-chat-header">
+                    {/* User Avatar Circle and Name Only - click avatar/name to view details popup */}
+                    <div
+                      className="wa-chat-header-user-info clickable"
+                      onClick={() => setShowUserDetailsModal(true)}
+                      role="button"
+                      tabIndex={0}
+                      title="Tap to view customer profile"
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowUserDetailsModal(true);
+                        }}
+                        className="wa-chat-header-avatar wa-chat-header-avatar-btn"
+                        aria-label="View user profile"
+                        title="View user details"
+                      >
+                        {activeChat?.customerName
+                          ? activeChat.customerName.charAt(0).toUpperCase()
+                          : "💬"}
+                      </button>
                       <h2 className="wa-chat-header-name">
                         {activeChat?.customerName || `+${selectedPhone}`}
                       </h2>
-                      <div className="wa-chat-header-meta">
-                        <span>Phone: +{selectedPhone}</span>
-                        {activeChat?.isWindowOpen ? (
-                          <span className="wa-window-badge open">
-                            ● 24h Meta Free Window Active
-                          </span>
-                        ) : (
-                          <span className="wa-window-badge closed" title="Replies outside 24h window require a Meta approved template">
-                            ⚠️ 24h Window Inactive
-                          </span>
-                        )}
+                    </div>
+
+                    {/* Right side: 24h indicator dot, desktop actions, and right-end angle back button */}
+                    <div className="wa-chat-header-right-actions">
+                      {/* 24hr Status Dot (Orange dot when inactive, Green dot when active) */}
+                      <span
+                        className={`wa-window-dot ${activeChat?.isWindowOpen ? "active" : "inactive"}`}
+                        title={
+                          activeChat?.isWindowOpen
+                            ? "24h Meta Free Window Active"
+                            : "24h Window Inactive (Template Required)"
+                        }
+                      />
+
+                      {/* Desktop Only Action Buttons */}
+                      <div className="wa-desktop-only-flex" style={{ alignItems: "center", gap: "6px" }}>
+                        <a
+                          href={`https://wa.me/${selectedPhone.replace(/\D/g, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="wa-header-action-btn"
+                          title="Open chat in WhatsApp Web"
+                        >
+                          <span>WA Web</span>
+                        </a>
+
+                        <a
+                          href={`tel:+${selectedPhone.replace(/\D/g, "")}`}
+                          className="wa-header-call-btn"
+                          title={`Call +${selectedPhone}`}
+                          aria-label="Call customer"
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                          </svg>
+                        </a>
                       </div>
+
+                      {/* Mobile Back Button: Angle icon at the right end */}
+                      <button
+                        type="button"
+                        onClick={() => setMobileChatOpen(false)}
+                        className="wa-mobile-back-angle-btn"
+                        aria-label="Back to conversations list"
+                        title="Back to conversations"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          style={{ width: "20px", height: "20px" }}
+                        >
+                          <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
 
-                  {/* Header Action Buttons */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <a
-                      href={`https://wa.me/${selectedPhone.replace(/\D/g, "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="wa-header-action-btn"
-                      title="Open chat in WhatsApp Web"
-                    >
-                      <span>WhatsApp Web</span>
-                    </a>
+                  {/* Chat Message Stream */}
+                  <div ref={chatContainerRef} className="wa-chat-messages-container">
+                    {isChatLoading && !activeChat ? (
+                      <div className="wa-chat-empty">Loading message history...</div>
+                    ) : activeChat?.messages.length === 0 ? (
+                      <div className="wa-chat-empty">No messages recorded in this conversation yet.</div>
+                    ) : (
+                      activeChat?.messages.map((msg) => {
+                        const isIncoming = msg.direction === "incoming";
+                        return (
+                          <div
+                            key={msg._id || msg.messageId}
+                            className={`wa-message-row ${isIncoming ? "incoming" : "outgoing"}`}
+                          >
+                            <div className={`wa-message-bubble ${isIncoming ? "incoming" : "outgoing"}`}>
+                              {/* Image Attachment */}
+                              {msg.type === "image" && msg.mediaUrl && (
+                                <div className="wa-media-image-box">
+                                  <a href={msg.mediaUrl} target="_blank" rel="noreferrer">
+                                    <img
+                                      src={msg.mediaUrl}
+                                      alt="WhatsApp attachment"
+                                      className="wa-media-image"
+                                    />
+                                  </a>
+                                </div>
+                              )}
 
-                    <a
-                      href={`tel:+${selectedPhone.replace(/\D/g, "")}`}
-                      className="wa-header-call-btn"
-                      title={`Call +${selectedPhone}`}
-                      aria-label="Call customer"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                      </svg>
-                    </a>
-                  </div>
-                </div>
-
-                {/* Chat Message Stream */}
-                <div ref={chatContainerRef} className="wa-chat-messages-container">
-                  {isChatLoading && !activeChat ? (
-                    <div className="wa-chat-empty">Loading message history...</div>
-                  ) : activeChat?.messages.length === 0 ? (
-                    <div className="wa-chat-empty">No messages recorded in this conversation yet.</div>
-                  ) : (
-                    activeChat?.messages.map((msg) => {
-                      const isIncoming = msg.direction === "incoming";
-                      return (
-                        <div
-                          key={msg._id || msg.messageId}
-                          className={`wa-message-row ${isIncoming ? "incoming" : "outgoing"}`}
-                        >
-                          <div className={`wa-message-bubble ${isIncoming ? "incoming" : "outgoing"}`}>
-                            {/* Sender name for group/identified inbound */}
-                            {isIncoming && msg.customerName && (
-                              <div className="wa-bubble-sender">{msg.customerName}</div>
-                            )}
-
-                            {/* Image Attachment */}
-                            {msg.type === "image" && msg.mediaUrl && (
-                              <div className="wa-media-image-box">
-                                <a href={msg.mediaUrl} target="_blank" rel="noreferrer">
-                                  <img
-                                    src={msg.mediaUrl}
-                                    alt="WhatsApp attachment"
-                                    className="wa-media-image"
-                                  />
-                                </a>
-                              </div>
-                            )}
-
-                            {/* Document Attachment */}
-                            {msg.type === "document" && (
-                              <div className="wa-media-doc-box">
-                                <span className="wa-doc-icon">📄</span>
-                                <div className="wa-doc-details">
-                                  <div className="wa-doc-name">
-                                    {msg.mediaFileName || "Document"}
-                                  </div>
-                                  {msg.mediaFileSize && (
-                                    <div className="wa-doc-size">
-                                      {(msg.mediaFileSize / 1024).toFixed(1)} KB
+                              {/* Document Attachment */}
+                              {msg.type === "document" && (
+                                <div className="wa-media-doc-box">
+                                  <span className="wa-doc-icon">📄</span>
+                                  <div className="wa-doc-details">
+                                    <div className="wa-doc-name">
+                                      {msg.mediaFileName || "Document"}
                                     </div>
+                                    {msg.mediaFileSize && (
+                                      <div className="wa-doc-size">
+                                        {(msg.mediaFileSize / 1024).toFixed(1)} KB
+                                      </div>
+                                    )}
+                                  </div>
+                                  {msg.mediaUrl && (
+                                    <a
+                                      href={msg.mediaUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="wa-doc-download-btn"
+                                    >
+                                      Download
+                                    </a>
                                   )}
                                 </div>
-                                {msg.mediaUrl && (
-                                  <a
-                                    href={msg.mediaUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="wa-doc-download-btn"
-                                  >
-                                    Download
-                                  </a>
+                              )}
+
+                              {/* Audio / Voice Note */}
+                              {msg.type === "audio" && msg.mediaUrl && (
+                                <div className="wa-media-audio-box">
+                                  <audio controls src={msg.mediaUrl} style={{ width: "100%", height: "36px" }} />
+                                </div>
+                              )}
+
+                              {/* Video Attachment */}
+                              {msg.type === "video" && msg.mediaUrl && (
+                                <div className="wa-media-video-box">
+                                  <video controls src={msg.mediaUrl} style={{ maxWidth: "100%", maxHeight: "240px", borderRadius: "8px" }} />
+                                </div>
+                              )}
+
+                              {/* Text Message Content */}
+                              {msg.text && <div className="wa-bubble-text">{msg.text}</div>}
+
+                              {/* Bubble Footer: small time only */}
+                              <div className="wa-bubble-footer">
+                                <span className="wa-bubble-time">{formatDateTime(msg.timestamp)}</span>
+                                {!isIncoming && (
+                                  <span className="wa-bubble-status">
+                                    {msg.status === "read"
+                                      ? "✓✓"
+                                      : msg.status === "delivered"
+                                      ? "✓✓"
+                                      : "✓"}
+                                  </span>
                                 )}
                               </div>
-                            )}
-
-                            {/* Audio / Voice Note */}
-                            {msg.type === "audio" && msg.mediaUrl && (
-                              <div className="wa-media-audio-box">
-                                <audio controls src={msg.mediaUrl} style={{ width: "100%", height: "36px" }} />
-                              </div>
-                            )}
-
-                            {/* Video Attachment */}
-                            {msg.type === "video" && msg.mediaUrl && (
-                              <div className="wa-media-video-box">
-                                <video controls src={msg.mediaUrl} style={{ maxWidth: "100%", maxHeight: "240px", borderRadius: "8px" }} />
-                              </div>
-                            )}
-
-                            {/* Text Message Content */}
-                            {msg.text && <div className="wa-bubble-text">{msg.text}</div>}
-
-                            {/* Bubble Footer */}
-                            <div className="wa-bubble-footer">
-                              <span className="wa-bubble-time">{formatDateTime(msg.timestamp)}</span>
-                              {!isIncoming && (
-                                <span className="wa-bubble-status">
-                                  {msg.status === "read"
-                                    ? "✓✓"
-                                    : msg.status === "delivered"
-                                    ? "✓✓"
-                                    : "✓"}
-                                </span>
-                              )}
                             </div>
                           </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
+                        );
+                      })
+                    )}
+                  </div>
 
-                {/* Quick Snippets Bar */}
-                <div className="wa-snippets-bar">
-                  <span className="wa-snippets-label">Quick Replies:</span>
-                  {quickReplies.map((snippet) => (
+                  {/* Quick Snippets Bar */}
+                  <div className="wa-snippets-bar">
+                    <span className="wa-snippets-label">Quick Replies:</span>
+                    {quickReplies.map((snippet) => (
+                      <button
+                        key={snippet._id || snippet.title}
+                        type="button"
+                        onClick={() => handleApplySnippet(snippet.text)}
+                        className="wa-snippet-pill"
+                        title={snippet.text}
+                      >
+                        {snippet.title}
+                      </button>
+                    ))}
                     <button
-                      key={snippet._id || snippet.title}
                       type="button"
-                      onClick={() => handleApplySnippet(snippet.text)}
-                      className="wa-snippet-pill"
-                      title={snippet.text}
+                      onClick={() => setActiveView("replies")}
+                      className="wa-snippet-pill manage"
+                      title="Manage quick replies and custom variables"
+                      style={{ color: "#16a34a", fontWeight: 700 }}
                     >
-                      {snippet.title}
+                      ⚙ Manage
                     </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setActiveView("replies")}
-                    className="wa-snippet-pill manage"
-                    title="Manage quick replies and custom variables"
-                    style={{ color: "#16a34a", fontWeight: 700 }}
-                  >
-                    ⚙ Manage
-                  </button>
-                </div>
+                  </div>
 
-                {/* Reply Form */}
-                <form onSubmit={handleSendReply} className="wa-reply-composer">
-                  <input
-                    type="text"
-                    placeholder={`Send WhatsApp reply to +${selectedPhone}...`}
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    disabled={isSending}
-                    className="wa-reply-input"
-                  />
+                  {/* Reply Form */}
+                  <form onSubmit={handleSendReply} className="wa-reply-composer">
+                    <input
+                      type="text"
+                      placeholder={`Send WhatsApp reply to +${selectedPhone}...`}
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      disabled={isSending}
+                      className="wa-reply-input"
+                    />
 
-                  <button
-                    type="submit"
-                    disabled={isSending || !replyText.trim()}
-                    className="wa-reply-send-btn"
-                  >
-                    {isSending ? "Sending..." : "Send Reply 🚀"}
-                  </button>
-                </form>
+                    <button
+                      type="submit"
+                      disabled={isSending || !replyText.trim()}
+                      className="wa-reply-send-btn wa-send-circle-btn"
+                      aria-label="Send WhatsApp message"
+                      title={isSending ? "Sending..." : "Send message"}
+                    >
+                      {isSending ? (
+                        <span className="wa-send-spinner" />
+                      ) : (
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          style={{ width: "17px", height: "17px", transform: "translateX(1px)" }}
+                        >
+                          <line x1="22" y1="2" x2="11" y2="13" />
+                          <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        </svg>
+                      )}
+                    </button>
+                  </form>
 
                 {sendError && (
                   <div className="wa-send-error-banner">
@@ -1164,12 +1495,238 @@ export default function WhatsAppEnquiriesManager({
               </>
             ) : (
               <div className="wa-no-selection">
+                <button
+                  type="button"
+                  onClick={() => setMobileChatOpen(false)}
+                  className="wa-mobile-back-btn"
+                  style={{ marginBottom: "16px" }}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ width: "16px", height: "16px" }}
+                  >
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                  <span>Back to Enquiries</span>
+                </button>
                 <div className="wa-no-selection-icon">💬</div>
                 <h3>Select a WhatsApp Enquiry</h3>
                 <p>Choose an incoming customer conversation from the list on the left to review messages and respond.</p>
               </div>
             )}
           </main>
+        </div>
+      </div>
+      )}
+
+      {/* Customer Details Modal Popup */}
+      {showUserDetailsModal && selectedPhone && (
+        <div
+          className="wa-modal-backdrop"
+          onClick={() => setShowUserDetailsModal(false)}
+        >
+          <div
+            className="wa-user-detail-card"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="wa-modal-user-name"
+          >
+            {/* Header bar */}
+            <div className="wa-modal-header">
+              <span className="wa-modal-header-title">Customer Profile</span>
+              <button
+                type="button"
+                className="wa-modal-close-btn"
+                onClick={() => setShowUserDetailsModal(false)}
+                aria-label="Close"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Profile Hero */}
+            <div className="wa-modal-hero">
+              <div className="wa-modal-avatar">
+                {activeChat?.customerName
+                  ? activeChat.customerName.charAt(0).toUpperCase()
+                  : currentConversation?.customerName
+                  ? currentConversation.customerName.charAt(0).toUpperCase()
+                  : "💬"}
+              </div>
+              <h3 id="wa-modal-user-name" className="wa-modal-name">
+                {activeChat?.customerName || currentConversation?.customerName || `Customer`}
+              </h3>
+              <div className="wa-modal-phone-row">
+                <span className="wa-modal-phone">+{selectedPhone}</span>
+                <button
+                  type="button"
+                  onClick={() => handleCopyPhone(selectedPhone)}
+                  className="wa-modal-copy-btn"
+                  title="Copy Phone Number"
+                >
+                  {copiedPhone ? "✓ Copied" : "Copy"}
+                </button>
+              </div>
+
+              {/* 24-Hour Messaging Window Badge */}
+              <div className="wa-modal-window-pill">
+                <span
+                  className={`wa-window-dot ${activeChat?.isWindowOpen ? "active" : "inactive"}`}
+                />
+                <span className="wa-modal-window-text">
+                  {activeChat?.isWindowOpen
+                    ? "24h Meta Free Window Active"
+                    : "24h Window Inactive (Template Required)"}
+                </span>
+              </div>
+            </div>
+
+            {/* Information Sections */}
+            <div className="wa-modal-body">
+              {/* WhatsApp Activity Section */}
+              <div className="wa-modal-section">
+                <h4 className="wa-modal-section-title">WhatsApp Activity</h4>
+                <div className="wa-modal-info-grid">
+                  <div className="wa-modal-info-item">
+                    <span className="wa-modal-info-label">Status</span>
+                    <span className="wa-modal-info-value">
+                      {currentConversation?.status === "pending" ||
+                      activeChat?.messages.slice(-1)[0]?.direction === "incoming" ? (
+                        <span className="wa-modal-badge pending">Pending Reply</span>
+                      ) : (
+                        <span className="wa-modal-badge responded">Responded</span>
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="wa-modal-info-item">
+                    <span className="wa-modal-info-label">Total Messages</span>
+                    <span className="wa-modal-info-value">
+                      {activeChat?.totalMessages || activeChat?.messages.length || currentConversation?.totalMessages || 0}
+                    </span>
+                  </div>
+
+                  {activeChat?.firstMessageTime && (
+                    <div className="wa-modal-info-item">
+                      <span className="wa-modal-info-label">First Contact</span>
+                      <span className="wa-modal-info-value">
+                        {formatDateTime(activeChat.firstMessageTime)}
+                      </span>
+                    </div>
+                  )}
+
+                  {activeChat?.lastIncomingTime && (
+                    <div className="wa-modal-info-item">
+                      <span className="wa-modal-info-label">Last Incoming</span>
+                      <span className="wa-modal-info-value">
+                        {formatDateTime(activeChat.lastIncomingTime)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Linked MongoDB Client Record Section */}
+              <div className="wa-modal-section">
+                <h4 className="wa-modal-section-title">Database Client Record</h4>
+                {activeChat?.linkedClient ? (
+                  <div className="wa-modal-info-grid">
+                    <div className="wa-modal-info-item">
+                      <span className="wa-modal-info-label">Registered Name</span>
+                      <span className="wa-modal-info-value bold">
+                        {activeChat.linkedClient.name || "N/A"}
+                      </span>
+                    </div>
+
+                    {activeChat.linkedClient.email && (
+                      <div className="wa-modal-info-item">
+                        <span className="wa-modal-info-label">Email</span>
+                        <span className="wa-modal-info-value">
+                          {activeChat.linkedClient.email}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="wa-modal-info-item">
+                      <span className="wa-modal-info-label">Service Status</span>
+                      <span className="wa-modal-info-value">
+                        <span
+                          className={`wa-modal-badge ${activeChat.linkedClient.completed ? "responded" : "pending"}`}
+                        >
+                          {activeChat.linkedClient.completed ? "Completed" : "In Progress"}
+                        </span>
+                      </span>
+                    </div>
+
+                    {activeChat.linkedClient.address && (
+                      <div className="wa-modal-info-item" style={{ gridColumn: "span 2" }}>
+                        <span className="wa-modal-info-label">Address</span>
+                        <span className="wa-modal-info-value">
+                          {activeChat.linkedClient.address}
+                          {activeChat.linkedClient.pin ? `, ${activeChat.linkedClient.pin}` : ""}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="wa-modal-info-item">
+                      <span className="wa-modal-info-label">Account Source</span>
+                      <span className="wa-modal-info-value">
+                        {activeChat.linkedClient.source === "website" ? "Online Portal" : "Manual Admin Entry"}
+                      </span>
+                    </div>
+                  </div>
+                ) : activeChat?.linkedEnquiry ? (
+                  <div className="wa-modal-info-grid">
+                    <div className="wa-modal-info-item">
+                      <span className="wa-modal-info-label">Enquiry Service</span>
+                      <span className="wa-modal-info-value bold">
+                        {activeChat.linkedEnquiry.service}
+                      </span>
+                    </div>
+                    <div className="wa-modal-info-item">
+                      <span className="wa-modal-info-label">Status</span>
+                      <span className="wa-modal-info-value">
+                        <span
+                          className={`wa-modal-badge ${activeChat.linkedEnquiry.status === "responded" ? "responded" : "pending"}`}
+                        >
+                          {activeChat.linkedEnquiry.status === "responded" ? "Responded" : "Pending"}
+                        </span>
+                      </span>
+                    </div>
+                    {activeChat.linkedEnquiry.submittedAt && (
+                      <div className="wa-modal-info-item">
+                        <span className="wa-modal-info-label">Submitted On</span>
+                        <span className="wa-modal-info-value">
+                          {formatDateTime(activeChat.linkedEnquiry.submittedAt)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="wa-modal-empty-client">
+                    <span>ℹ️ No linked client account found in MongoDB for this phone.</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="wa-modal-footer">
+              <button
+                type="button"
+                onClick={() => setShowUserDetailsModal(false)}
+                className="wa-modal-done-btn"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

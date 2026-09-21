@@ -176,6 +176,11 @@ export default function AdminLoginForm() {
           JSON.stringify(adminData)
         );
       }
+      try {
+        localStorage.removeItem("abc_admin_active_tab");
+      } catch {
+        // Ignore storage error
+      }
 
       // Prepare toast notification for destination page
       const toastPayload = {

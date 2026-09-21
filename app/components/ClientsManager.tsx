@@ -155,6 +155,22 @@ export default function ClientsManager({ user }: ClientsManagerProps) {
   // Selected Client (Drawer / Details Modal)
   const [selectedClient, setSelectedClient] = useState<ClientItem | null>(null);
   const [isUpdatingClient, setIsUpdatingClient] = useState(false);
+
+  // Mobile accordion card expansion tracking (shrunken by default)
+  const [expandedClientIds, setExpandedClientIds] = useState<Set<string>>(new Set());
+
+  const toggleClientExpand = (clientId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setExpandedClientIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(clientId)) {
+        next.delete(clientId);
+      } else {
+        next.add(clientId);
+      }
+      return next;
+    });
+  };
   const [editFormData, setEditFormData] = useState({
     name: "",
     email: "",
@@ -1366,6 +1382,174 @@ export default function ClientsManager({ user }: ClientsManagerProps) {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Accordion Card View (Default shrunken, expands on chevron click) */}
+          <div className="clients-mobile-list">
+            {filteredClients.map((client) => {
+              const isExpanded = expandedClientIds.has(client.id);
+              const isToggling = togglingClientId === client.id;
+              const initials = client.name
+                ? client.name.substring(0, 2).toUpperCase()
+                : client.identifier.substring(0, 2).toUpperCase();
+
+              return (
+                <div
+                  key={`mobile-${client.id}`}
+                  className={`client-mobile-card ${isExpanded ? "is-expanded" : ""}`}
+                >
+                  {/* Shrunken Header: Name, Avatar, Status Dot & Angle Down Chevron */}
+                  <div
+                    className="client-mobile-card-header"
+                    onClick={(e) => toggleClientExpand(client.id, e)}
+                  >
+                    <div className="client-mobile-header-left">
+                      {client.photo?.url ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={client.photo.url}
+                          alt={client.name || "Client"}
+                          className="client-avatar-img"
+                        />
+                      ) : (
+                        <div className="client-avatar-placeholder">
+                          {initials}
+                        </div>
+                      )}
+                      <span className="client-mobile-name">
+                        {client.name || "Unnamed Client"}
+                      </span>
+                    </div>
+
+                    <div className="client-mobile-header-right">
+                      <span
+                        className={`client-mobile-status-dot ${client.completed ? "status-green" : "status-orange"}`}
+                        title={client.completed ? "Completed" : "In Progress"}
+                      />
+                      <button
+                        type="button"
+                        className={`client-mobile-expand-btn ${isExpanded ? "rotated" : ""}`}
+                        onClick={(e) => toggleClientExpand(client.id, e)}
+                        aria-label={isExpanded ? "Collapse details" : "Expand details"}
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Expanded Body: All Details matching Laptop view */}
+                  {isExpanded && (
+                    <div className="client-mobile-card-body">
+                      {/* ID */}
+                      <div className="client-mobile-detail-row">
+                        <span className="detail-label">Client ID</span>
+                        <span className="detail-value mono">{client.identifier}</span>
+                      </div>
+
+                      {/* Contact: Phone & Email */}
+                      {(client.phone || client.email) && (
+                        <div className="client-mobile-detail-row">
+                          <span className="detail-label">Contact</span>
+                          <div className="detail-value contact-group">
+                            {client.phone && (
+                              <div className="contact-item">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                                </svg>
+                                <span>{client.phone}</span>
+                              </div>
+                            )}
+                            {client.email && (
+                              <div className="contact-item">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                  <polyline points="22,6 12,13 2,6" />
+                                </svg>
+                                <span>{client.email}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Address & PIN */}
+                      {(client.address || client.pin) && (
+                        <div className="client-mobile-detail-row">
+                          <span className="detail-label">Address</span>
+                          <div className="detail-value">
+                            <div>{client.address || "—"}</div>
+                            {client.pin && <div className="client-pin-sub">PIN: {client.pin}</div>}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Source */}
+                      <div className="client-mobile-detail-row">
+                        <span className="detail-label">Source</span>
+                        <div className="detail-value">
+                          <span className={`client-source-pill ${client.source === "website" ? "automatic" : "manual"}`}>
+                            {client.source === "website" ? "Automatic" : "Manual"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Status Toggle */}
+                      <div className="client-mobile-detail-row">
+                        <span className="detail-label">Status</span>
+                        <div className="detail-value">
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleCompleted(client.id, client.completed, e)}
+                            disabled={isToggling}
+                            className={`client-mobile-status-badge ${client.completed ? "status-green" : "status-orange"}`}
+                            title="Tap to toggle status"
+                          >
+                            <span className="status-dot-indicator" />
+                            <span>{client.completed ? "Completed" : "In Progress"}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Files Count */}
+                      <div className="client-mobile-detail-row">
+                        <span className="detail-label">Attached Files</span>
+                        <div className="detail-value">
+                          <div className="client-files-badge">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                              <polyline points="13 2 13 9 20 9" />
+                            </svg>
+                            <span>{client.fileCount || client.files?.length || 0} files</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Open Files & Details Action Button */}
+                      <button
+                        type="button"
+                        onClick={() => openClientDetails(client)}
+                        className="client-mobile-open-btn"
+                      >
+                        <span>Open Files & Details</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                          <polyline points="12 5 19 12 12 19" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
