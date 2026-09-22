@@ -39,6 +39,11 @@ export interface EnquiryItem {
   respondedBy?: string;
   respondedByRole?: string;
   respondedAt?: string;
+  claimedBy?: string | null;
+  claimedByName?: string;
+  claimedByRole?: string;
+  claimedByEmail?: string;
+  claimedAt?: string;
   notes?: string;
   createdAt?: string;
 }
@@ -382,10 +387,13 @@ export default function DashboardContent({
       return [];
     }
   });
-  const [enquiryFilter, setEnquiryFilter] = useState<"all" | "pending" | "responded">("all");
+  const [enquiryFilter, setEnquiryFilter] = useState<
+    "all" | "available" | "my_claims" | "pending" | "responded"
+  >("all");
   const [enquirySearch, setEnquirySearch] = useState<string>("");
   const [isEnquiriesLoading, setIsEnquiriesLoading] = useState(true);
   const [updatingEnquiryId, setUpdatingEnquiryId] = useState<string | null>(null);
+  const [claimingEnquiryId, setClaimingEnquiryId] = useState<string | null>(null);
 
   // Mobile accordion card expansion tracking for Client Enquiries (shrunken by default)
   const [expandedEnquiryIds, setExpandedEnquiryIds] = useState<Set<string>>(new Set());
@@ -493,22 +501,15 @@ export default function DashboardContent({
   const refreshEnquiries = useCallback(async () => {
     try {
       setIsEnquiriesLoading(true);
-      const res = await fetch(`${API_BASE_URL}/api/v1/admin/enquiries`);
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/enquiries`, {
+        headers: getAdminAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         const serverList: EnquiryItem[] = data.data?.enquiries || [];
-
-        // Also merge any local-only entries from localStorage
-        const stored = localStorage.getItem("abc_enquiries");
-        const localList: EnquiryItem[] = stored ? JSON.parse(stored) : [];
-
-        const serverIds = new Set(serverList.map((e) => String(e._id)));
-        const localOnly = localList.filter((e) => !serverIds.has(String(e._id)));
-
-        const combined = [...localOnly, ...serverList];
-        setEnquiries(combined);
+        setEnquiries(serverList);
         try {
-          localStorage.setItem("abc_enquiries", JSON.stringify(combined));
+          localStorage.setItem("abc_enquiries", JSON.stringify(serverList));
         } catch {
           // Ignore
         }
@@ -519,7 +520,7 @@ export default function DashboardContent({
         }
       }
     } catch {
-      // Backend offline: use localStorage
+      // Backend offline: use localStorage fallback
       const stored = localStorage.getItem("abc_enquiries");
       if (stored) {
         setEnquiries(JSON.parse(stored));
@@ -527,7 +528,7 @@ export default function DashboardContent({
     } finally {
       setIsEnquiriesLoading(false);
     }
-  }, []);
+  }, [getAdminAuthHeaders]);
 
   // Update sidebar badge when enquiries list changes (for both Master and Worker Admins)
   useEffect(() => {
@@ -543,22 +544,19 @@ export default function DashboardContent({
       if (isMounted) setIsEnquiriesLoading(true);
     });
 
-    fetch(`${API_BASE_URL}/api/v1/admin/enquiries`)
+    fetch(`${API_BASE_URL}/api/v1/admin/enquiries`, {
+      headers: getAdminAuthHeaders(),
+    })
       .then(async (res) => {
         if (!isMounted) return;
         if (res.ok) {
           const data = await res.json();
           const serverList: EnquiryItem[] = data.data?.enquiries || [];
-          const stored = localStorage.getItem("abc_enquiries");
-          const localList: EnquiryItem[] = stored ? JSON.parse(stored) : [];
-          const serverIds = new Set(serverList.map((e) => String(e._id)));
-          const localOnly = localList.filter((e) => !serverIds.has(String(e._id)));
-          const combined = [...localOnly, ...serverList];
           if (isMounted) {
-            setEnquiries(combined);
+            setEnquiries(serverList);
           }
           try {
-            localStorage.setItem("abc_enquiries", JSON.stringify(combined));
+            localStorage.setItem("abc_enquiries", JSON.stringify(serverList));
           } catch {
             // Ignore
           }
@@ -579,14 +577,7 @@ export default function DashboardContent({
       });
 
     const handleSync = () => {
-      try {
-        const stored = localStorage.getItem("abc_enquiries");
-        if (stored) {
-          setEnquiries(JSON.parse(stored));
-        }
-      } catch {
-        // Ignore
-      }
+      refreshEnquiries();
     };
 
     window.addEventListener("storage", handleSync);
@@ -597,7 +588,122 @@ export default function DashboardContent({
       window.removeEventListener("storage", handleSync);
       window.removeEventListener("abc_enquiries_updated", handleSync);
     };
-  }, [activeTab, isMaster]);
+  }, [activeTab, isMaster, getAdminAuthHeaders, refreshEnquiries]);
+
+  // Opt In / Claim Enquiry
+  const handleOptInEnquiry = async (enquiry: EnquiryItem) => {
+    const adminId = user?.id || (isMaster ? "master_admin" : "");
+    const adminName =
+      user?.name?.trim() ||
+      user?.identifier?.split("@")[0] ||
+      (isMaster ? "Master Admin" : "Worker Admin");
+    const adminRole = isMaster ? "master_admin" : (user?.role || "worker_admin");
+    const adminEmail = user?.identifier || "";
+
+    setClaimingEnquiryId(enquiry._id);
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/admin/enquiries/${enquiry._id}/claim`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAdminAuthHeaders(),
+          },
+          body: JSON.stringify({
+            adminId,
+            adminName,
+            adminRole,
+            adminEmail,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message || "Failed to claim this enquiry.");
+        refreshEnquiries();
+        return;
+      }
+
+      const updatedEnquiry: EnquiryItem = data.data?.enquiry;
+      if (updatedEnquiry) {
+        setEnquiries((prev) =>
+          prev.map((item) => (item._id === enquiry._id ? updatedEnquiry : item))
+        );
+        try {
+          window.dispatchEvent(new Event("abc_enquiries_updated"));
+        } catch {
+          // Ignore
+        }
+      } else {
+        refreshEnquiries();
+      }
+    } catch (err) {
+      console.error("Error opting in to enquiry:", err);
+      alert("Unable to reach server. Please verify your connection.");
+    } finally {
+      setClaimingEnquiryId(null);
+    }
+  };
+
+  // Opt Out / Release Enquiry
+  const handleOptOutEnquiry = async (enquiry: EnquiryItem) => {
+    if (
+      !confirm(
+        "Are you sure you want to release this enquiry? It will become open for any team member to opt in."
+      )
+    ) {
+      return;
+    }
+
+    setClaimingEnquiryId(enquiry._id);
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/admin/enquiries/${enquiry._id}/unclaim`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAdminAuthHeaders(),
+          },
+          body: JSON.stringify({
+            adminId: user?.id,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message || "Failed to release this enquiry.");
+        refreshEnquiries();
+        return;
+      }
+
+      const updatedEnquiry: EnquiryItem = data.data?.enquiry;
+      if (updatedEnquiry) {
+        setEnquiries((prev) =>
+          prev.map((item) => (item._id === enquiry._id ? updatedEnquiry : item))
+        );
+        try {
+          window.dispatchEvent(new Event("abc_enquiries_updated"));
+        } catch {
+          // Ignore
+        }
+      } else {
+        refreshEnquiries();
+      }
+    } catch (err) {
+      console.error("Error releasing enquiry:", err);
+      alert("Unable to reach server. Please verify your connection.");
+    } finally {
+      setClaimingEnquiryId(null);
+    }
+  };
 
   const handleToggleEnquiryResponded = async (enquiry: EnquiryItem) => {
     const isCurrentlyResponded = enquiry.status === "responded";
@@ -645,6 +751,7 @@ export default function DashboardContent({
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
+          ...getAdminAuthHeaders(),
         },
         body: JSON.stringify({
           status: targetStatus,
@@ -674,28 +781,47 @@ export default function DashboardContent({
     try {
       await fetch(`${API_BASE_URL}/api/v1/admin/enquiries/${id}`, {
         method: "DELETE",
+        headers: getAdminAuthHeaders(),
       });
     } catch {
       // Ignore
     }
   };
 
+  // Helper to check if current logged-in user opted into this enquiry
+  const isEnquiryClaimedByMe = (item: EnquiryItem): boolean => {
+    if (!item.claimedBy) return false;
+    const currentUserId = user?.id || "";
+    const currentUserIdentifier = user?.identifier || "";
+    if (currentUserId && item.claimedBy === currentUserId) return true;
+    if (currentUserIdentifier && item.claimedBy === currentUserIdentifier) return true;
+    if (isMaster && (item.claimedBy === "master_admin" || item.claimedByRole === "master_admin")) return true;
+    return false;
+  };
+
   // Enquiries counts and filtering
   const totalCount = enquiries.length;
   const pendingCount = enquiries.filter((e) => e.status !== "responded").length;
   const respondedCount = enquiries.filter((e) => e.status === "responded").length;
+  const unclaimedCount = enquiries.filter((e) => !e.claimedBy && e.status !== "responded").length;
+  const myClaimedCount = enquiries.filter((e) => isEnquiryClaimedByMe(e)).length;
+  const claimedCount = enquiries.filter((e) => Boolean(e.claimedBy)).length;
 
   const filteredEnquiries = enquiries.filter((item) => {
     if (enquiryFilter === "pending" && item.status === "responded") return false;
     if (enquiryFilter === "responded" && item.status !== "responded") return false;
+    if (enquiryFilter === "available" && (Boolean(item.claimedBy) || item.status === "responded")) return false;
+    if (enquiryFilter === "my_claims" && !isEnquiryClaimedByMe(item)) return false;
 
     if (enquirySearch.trim()) {
       const q = enquirySearch.toLowerCase().trim();
       const matchName = item.name?.toLowerCase().includes(q);
       const matchPhone = item.phone?.toLowerCase().includes(q);
+      const matchEmail = item.email?.toLowerCase().includes(q);
       const matchService = item.service?.toLowerCase().includes(q);
       const matchResponder = item.respondedBy?.toLowerCase().includes(q);
-      return Boolean(matchName || matchPhone || matchService || matchResponder);
+      const matchClaimed = item.claimedByName?.toLowerCase().includes(q);
+      return Boolean(matchName || matchPhone || matchEmail || matchService || matchResponder || matchClaimed);
     }
     return true;
   });
@@ -1081,53 +1207,6 @@ export default function DashboardContent({
             </button>
           </div>
 
-          {/* Switcher between Website Form Enquiries and WhatsApp Enquiries (Hidden on mobile) */}
-          <div
-            className="enquiry-source-switcher"
-            style={{
-              display: "inline-flex",
-              backgroundColor: "#f1f5f9",
-              borderRadius: "8px",
-              padding: "4px",
-              marginBottom: "20px",
-              gap: "4px",
-              border: "1px solid #e2e8f0",
-            }}
-          >
-            <button
-              type="button"
-              className="enquiry-filter-btn active"
-              style={{
-                borderRadius: "6px",
-                fontSize: "12px",
-                padding: "6px 14px",
-                fontWeight: "600",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              <span>📋 Website Form Enquiries</span>
-              <span className="enquiry-filter-counter">{totalCount}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigateTab?.("whatsapp_enquiries")}
-              className="enquiry-filter-btn"
-              style={{
-                borderRadius: "6px",
-                fontSize: "12px",
-                padding: "6px 14px",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              <span>💬 WhatsApp Enquiries</span>
-              <span style={{ fontSize: "11px", color: "#16a34a", fontWeight: "600" }}>Live</span>
-            </button>
-          </div>
-
           {/* Top 3 Summary Metrics Cards (Desktop / Laptop view) */}
           <div className="enquiry-metrics-grid client-enquiries-metrics-grid">
             <div className="enquiry-metric-card">
@@ -1200,6 +1279,26 @@ export default function DashboardContent({
 
               <button
                 type="button"
+                onClick={() => setEnquiryFilter("available")}
+                className={`enquiry-filter-btn ${enquiryFilter === "available" ? "active" : ""}`}
+              >
+                <span>Available (Open)</span>
+                <span className="enquiry-filter-counter">{unclaimedCount}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setEnquiryFilter("my_claims")}
+                className={`enquiry-filter-btn ${enquiryFilter === "my_claims" ? "active" : ""}`}
+              >
+                <span>{isMaster ? "Claimed" : "My Opt-ins"}</span>
+                <span className="enquiry-filter-counter">
+                  {isMaster ? claimedCount : myClaimedCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setEnquiryFilter("pending")}
                 className={`enquiry-filter-btn ${enquiryFilter === "pending" ? "active" : ""}`}
               >
@@ -1257,6 +1356,9 @@ export default function DashboardContent({
                     <span className="th-inner">Submitted Time</span>
                   </th>
                   <th>
+                    <span className="th-inner">Opt-In / Handled By</span>
+                  </th>
+                  <th>
                     <span className="th-inner">Team Response Status</span>
                   </th>
                   <th style={{ textAlign: "right" }}>
@@ -1267,9 +1369,15 @@ export default function DashboardContent({
               <tbody>
                 {filteredEnquiries.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="empty-admin-cell">
+                    <td colSpan={7} className="empty-admin-cell">
                       {enquirySearch.trim()
                         ? "No enquiries match your search query."
+                        : enquiryFilter === "available"
+                        ? "No unclaimed enquiries available right now."
+                        : enquiryFilter === "my_claims"
+                        ? isMaster
+                          ? "No claimed enquiries found."
+                          : "You have not opted into any enquiries yet."
                         : enquiryFilter === "pending"
                         ? "No pending enquiries. All leads have been responded to!"
                         : enquiryFilter === "responded"
@@ -1297,12 +1405,45 @@ export default function DashboardContent({
                     const cleanPhone = item.phone.replace(/[^0-9+]/g, "");
                     const isResponded = item.status === "responded";
                     const isCurrentUpdating = updatingEnquiryId === item._id;
+                    const isCurrentClaiming = claimingEnquiryId === item._id;
 
                     return (
                       <tr key={item._id}>
                         {/* 1. Client Name */}
                         <td>
                           <div className="admin-user-cell">
+                            {/* Opt In Button to the left of the user name (only if unclaimed and not responded) */}
+                            {!isResponded && !item.claimedBy && (
+                              <button
+                                type="button"
+                                className="enquiry-action-btn-optin"
+                                onClick={() => handleOptInEnquiry(item)}
+                                disabled={isCurrentClaiming}
+                                title="Opt in to claim and handle this enquiry"
+                                style={{
+                                  padding: "5px 11px",
+                                  fontSize: "12px",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  style={{ width: "12px", height: "12px" }}
+                                >
+                                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                  <circle cx="8.5" cy="7" r="4" />
+                                  <line x1="20" y1="8" x2="20" y2="14" />
+                                  <line x1="23" y1="11" x2="17" y2="11" />
+                                </svg>
+                                <span>{isCurrentClaiming ? "Opting in..." : "Opt In"}</span>
+                              </button>
+                            )}
+
                             <div className="admin-avatar-photo">
                               {initials}
                             </div>
@@ -1429,7 +1570,89 @@ export default function DashboardContent({
                           </div>
                         </td>
 
-                        {/* 5. Team Response Status & Responder Info */}
+                        {/* 5. Opt-In / Handled By */}
+                        <td>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            {!item.claimedBy ? (
+                              isResponded ? (
+                                <span
+                                  className="enquiry-claim-badge responded"
+                                  style={{
+                                    backgroundColor: "#f0fdf4",
+                                    color: "#16a34a",
+                                    border: "1px solid #bbf7d0",
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      width: "6px",
+                                      height: "6px",
+                                      borderRadius: "50%",
+                                      backgroundColor: "#16a34a",
+                                    }}
+                                  />
+                                  Responded &amp; Closed
+                                </span>
+                              ) : (
+                                <span className="enquiry-claim-badge open">
+                                  <span
+                                    style={{
+                                      width: "6px",
+                                      height: "6px",
+                                      borderRadius: "50%",
+                                      backgroundColor: "#0284c7",
+                                    }}
+                                  />
+                                  Open (Unclaimed)
+                                </span>
+                              )
+                            ) : isEnquiryClaimedByMe(item) ? (
+                              <span className="enquiry-claim-badge claimed-self">
+                                <span
+                                  style={{
+                                    width: "6px",
+                                    height: "6px",
+                                    borderRadius: "50%",
+                                    backgroundColor: "#059669",
+                                  }}
+                                />
+                                Opted In (You)
+                              </span>
+                            ) : (
+                              <span className="enquiry-claim-badge claimed-other">
+                                <span
+                                  style={{
+                                    width: "6px",
+                                    height: "6px",
+                                    borderRadius: "50%",
+                                    backgroundColor: "#7c3aed",
+                                  }}
+                                />
+                                {item.claimedByName || "Team Member"}
+                              </span>
+                            )}
+
+                            {item.claimedBy && (
+                              <span
+                                style={{
+                                  fontSize: "0.72rem",
+                                  color: "#64748b",
+                                  paddingLeft: "2px",
+                                }}
+                              >
+                                {isEnquiryClaimedByMe(item)
+                                  ? (isMaster ? "Master Admin" : "Assigned to you")
+                                  : `${item.claimedByName || "Team Member"} (${
+                                      item.claimedByRole === "master_admin"
+                                        ? "Master Admin"
+                                        : "Worker Admin"
+                                    })`}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 6. Team Response Status & Responder Info */}
                         <td>
                           <div className="enquiry-status-group">
                             <span
@@ -1466,12 +1689,37 @@ export default function DashboardContent({
                           </div>
                         </td>
 
-                        {/* 6. Action Column */}
+                        {/* 7. Action Column */}
                         <td style={{ textAlign: "right" }}>
                           <div
                             className="table-action-group"
                             style={{ justifyContent: "flex-end", gap: "6px" }}
                           >
+                            {/* Release / Opt Out Button (if claimed and not responded, by current user or master admin) */}
+                            {item.claimedBy && !isResponded && (isEnquiryClaimedByMe(item) || isMaster) && (
+                              <button
+                                type="button"
+                                className="enquiry-action-btn-optout"
+                                onClick={() => handleOptOutEnquiry(item)}
+                                disabled={isCurrentClaiming}
+                                title="Release this enquiry back to the open pool"
+                              >
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  style={{ width: "11px", height: "11px" }}
+                                >
+                                  <path d="M18 6 6 18" />
+                                  <path d="m6 6 12 12" />
+                                </svg>
+                                <span>{isCurrentClaiming ? "Releasing..." : "Release"}</span>
+                              </button>
+                            )}
+
                             {/* Direct Email Reply Button */}
                             {item.email && (
                               <button
@@ -1624,6 +1872,7 @@ export default function DashboardContent({
                 const cleanPhone = item.phone.replace(/[^0-9+]/g, "");
                 const isResponded = item.status === "responded";
                 const isCurrentUpdating = updatingEnquiryId === item._id;
+                const isCurrentClaiming = claimingEnquiryId === item._id;
 
                 return (
                   <div
@@ -1635,7 +1884,42 @@ export default function DashboardContent({
                       className="client-mobile-card-header"
                       onClick={(e) => toggleEnquiryExpand(item._id, e)}
                     >
-                      <div className="client-mobile-header-left">
+                      <div className="client-mobile-header-left" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        {/* Opt In button to the left of user name (only if unclaimed and not responded) */}
+                        {!isResponded && !item.claimedBy && (
+                          <button
+                            type="button"
+                            className="enquiry-action-btn-optin"
+                            style={{
+                              padding: "4px 8px",
+                              fontSize: "11px",
+                              borderRadius: "6px",
+                              flexShrink: 0,
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOptInEnquiry(item);
+                            }}
+                            disabled={isCurrentClaiming}
+                            title="Opt in to claim and handle this enquiry"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              style={{ width: "11px", height: "11px" }}
+                            >
+                              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                              <circle cx="8.5" cy="7" r="4" />
+                              <line x1="20" y1="8" x2="20" y2="14" />
+                              <line x1="23" y1="11" x2="17" y2="11" />
+                            </svg>
+                            <span>{isCurrentClaiming ? "..." : "Opt In"}</span>
+                          </button>
+                        )}
                         <div className="admin-avatar-photo">
                           {initials}
                         </div>
@@ -1645,6 +1929,31 @@ export default function DashboardContent({
                       </div>
 
                       <div className="client-mobile-header-right">
+                        {item.claimedBy ? (
+                          isEnquiryClaimedByMe(item) ? (
+                            <span
+                              className="enquiry-claim-badge claimed-self"
+                              style={{ fontSize: "0.68rem", padding: "2px 7px" }}
+                            >
+                              Claimed (You)
+                            </span>
+                          ) : (
+                            <span
+                              className="enquiry-claim-badge claimed-other"
+                              style={{ fontSize: "0.68rem", padding: "2px 7px" }}
+                            >
+                              {item.claimedByName || "Claimed"}
+                            </span>
+                          )
+                        ) : !isResponded ? (
+                          <span
+                            className="enquiry-claim-badge open"
+                            style={{ fontSize: "0.68rem", padding: "2px 7px" }}
+                          >
+                            Open
+                          </span>
+                        ) : null}
+
                         <span
                           className={`enquiry-status-pill ${
                             isResponded ? "responded" : "pending"
@@ -1801,6 +2110,40 @@ export default function DashboardContent({
                           </span>
                         </div>
 
+                        {/* Assignment / Opt-In Status */}
+                        <div className="client-mobile-detail-row">
+                          <span className="detail-label">Opt-In Status</span>
+                          <div className="detail-value" style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                            {!item.claimedBy ? (
+                              isResponded ? (
+                                <span
+                                  className="enquiry-claim-badge responded"
+                                  style={{
+                                    width: "fit-content",
+                                    backgroundColor: "#f0fdf4",
+                                    color: "#16a34a",
+                                    border: "1px solid #bbf7d0",
+                                  }}
+                                >
+                                  Responded &amp; Closed
+                                </span>
+                              ) : (
+                                <span className="enquiry-claim-badge open" style={{ width: "fit-content" }}>
+                                  Open (Unclaimed)
+                                </span>
+                              )
+                            ) : isEnquiryClaimedByMe(item) ? (
+                              <span className="enquiry-claim-badge claimed-self" style={{ width: "fit-content" }}>
+                                Opted In (You)
+                              </span>
+                            ) : (
+                              <span className="enquiry-claim-badge claimed-other" style={{ width: "fit-content" }}>
+                                {item.claimedByName || "Team Member"} ({item.claimedByRole === "master_admin" ? "Master Admin" : "Worker Admin"})
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
                         {/* Team Response Status */}
                         <div className="client-mobile-detail-row">
                           <span className="detail-label">Team Response Status</span>
@@ -1845,6 +2188,57 @@ export default function DashboardContent({
                             borderTop: "1px solid #f1f5f9",
                           }}
                         >
+                          {/* Opt In Button (if unclaimed and not responded) */}
+                          {!item.claimedBy && !isResponded && (
+                            <button
+                              type="button"
+                              className="enquiry-action-btn-optin"
+                              style={{ flex: 1, padding: "8px 12px", fontSize: "12px", justifyContent: "center" }}
+                              onClick={() => handleOptInEnquiry(item)}
+                              disabled={isCurrentClaiming}
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{ width: "13px", height: "13px" }}
+                              >
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                <circle cx="8.5" cy="7" r="4" />
+                                <line x1="20" y1="8" x2="20" y2="14" />
+                                <line x1="23" y1="11" x2="17" y2="11" />
+                              </svg>
+                              <span>{isCurrentClaiming ? "Opting in..." : "Opt In"}</span>
+                            </button>
+                          )}
+
+                          {/* Release Button (if claimed and not responded, by current user or master admin) */}
+                          {item.claimedBy && !isResponded && (isEnquiryClaimedByMe(item) || isMaster) && (
+                            <button
+                              type="button"
+                              className="enquiry-action-btn-optout"
+                              style={{ flex: 1, padding: "8px 12px", fontSize: "12px", justifyContent: "center" }}
+                              onClick={() => handleOptOutEnquiry(item)}
+                              disabled={isCurrentClaiming}
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{ width: "11px", height: "11px" }}
+                              >
+                                <path d="M18 6 6 18" />
+                                <path d="m6 6 12 12" />
+                              </svg>
+                              <span>{isCurrentClaiming ? "Releasing..." : "Release"}</span>
+                            </button>
+                          )}
                           {item.email && (
                             <button
                               type="button"

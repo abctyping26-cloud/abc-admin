@@ -1867,6 +1867,81 @@
   border-color: #cbd5e1;
 }
 
+/* Opt-in & Claim Action Buttons */
+.enquiry-action-btn-optin {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background-color: #047857;
+  color: #ffffff;
+  border: 1px solid #059669;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.enquiry-action-btn-optin:hover {
+  background-color: #065f46;
+  border-color: #047857;
+}
+
+.enquiry-action-btn-optout {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.enquiry-action-btn-optout:hover {
+  background-color: #ffe4e6;
+  color: #be123c;
+  border-color: #fda4af;
+}
+
+/* Enquiry Claim Status Badges */
+.enquiry-claim-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  width: fit-content;
+  line-height: 1.25;
+}
+
+.enquiry-claim-badge.open {
+  background-color: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.enquiry-claim-badge.claimed-self {
+  background-color: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.enquiry-claim-badge.claimed-other {
+  background-color: #f5f3ff;
+  color: #5b21b6;
+  border: 1px solid #ddd6fe;
+}
+
 @media (max-width: 768px) {
   .enquiry-controls-bar {
     flex-direction: column;
