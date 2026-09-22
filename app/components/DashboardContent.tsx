@@ -1069,7 +1069,7 @@ export default function DashboardContent({
           <>
             <h1 className="content-title">Worker Admin Workspace</h1>
             <p className="content-subtitle" style={{ marginBottom: "24px" }}>
-              Welcome back, {user?.name || user?.identifier || "Worker Admin"}. Overview of your assigned clients and platform enquiries.
+              Welcome back, {user?.name || user?.identifier || "Worker Admin"}. Overview of all clients and platform enquiries.
             </p>
 
             <div className="enquiry-metrics-grid">
@@ -1078,13 +1078,13 @@ export default function DashboardContent({
                 className="enquiry-metric-card client-overview-big-card"
                 onClick={() => onNavigateTab?.("clients")}
                 style={{ cursor: "pointer" }}
-                title="View assigned clients"
+                title="View all clients"
               >
                 <div className="client-big-card-content">
                   <div className="client-big-card-left">
                     <div className="enquiry-metric-header">
-                      <span className="enquiry-metric-label">Assigned Clients</span>
-                      <span className="client-big-card-tag">Assigned</span>
+                      <span className="enquiry-metric-label">Total Clients</span>
+                      <span className="client-big-card-tag">Overview</span>
                     </div>
                     <div className="client-big-metric-value">{clientsCount}</div>
                     <div className="client-big-card-breakdown">

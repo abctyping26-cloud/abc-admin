@@ -131,11 +131,19 @@ function FileThumbnail({ file }: { file: ClientFile }) {
   );
 }
 
-export default function ClientsManager({ user }: ClientsManagerProps) {
+export default function ClientsManager({ user, isMaster }: ClientsManagerProps) {
   const [clients, setClients] = useState<ClientItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTab, setFilterTab] = useState<"all" | "in_progress" | "completed" | "website" | "manual">("all");
+
+  const canDeleteClient = (client: ClientItem | null): boolean => {
+    if (!client) return false;
+    if (isMaster) return true;
+    const creatorId = client.createdBy?._id || client.createdBy?.id;
+    if (creatorId && user?.id && creatorId.toString() === user.id.toString()) return true;
+    return false;
+  };
 
   // Add Client Form State (Inline in content section)
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
@@ -562,6 +570,13 @@ export default function ClientsManager({ user }: ClientsManagerProps) {
   // Delete entire client
   const handleDeleteClient = async (clientId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+
+    const target = clients.find((c) => c.id === clientId) || selectedClient;
+    if (!canDeleteClient(target)) {
+      alert("Only the creator or a Master Admin has permission to delete this client record.");
+      return;
+    }
+
     if (!window.confirm("Are you sure you want to delete this client? All associated files in Cloudinary will also be permanently deleted.")) {
       return;
     }
@@ -579,9 +594,13 @@ export default function ClientsManager({ user }: ClientsManagerProps) {
           setSelectedClient(null);
         }
         window.dispatchEvent(new Event("abc_client_updated"));
+      } else {
+        const errorData = await res.json().catch(() => null);
+        alert(errorData?.message || "Failed to delete client record.");
       }
     } catch (err) {
       console.error("Failed to delete client:", err);
+      alert("Network error: Could not reach the server to delete client.");
     } finally {
       setDeletingClientId(null);
     }
@@ -639,9 +658,17 @@ export default function ClientsManager({ user }: ClientsManagerProps) {
               <button
                 type="button"
                 onClick={() => handleDeleteClient(selectedClient.id)}
-                disabled={deletingClientId === selectedClient.id}
+                disabled={deletingClientId === selectedClient.id || !canDeleteClient(selectedClient)}
                 className="client-delete-action-btn"
-                title="Delete client and all Cloudinary files"
+                title={
+                  canDeleteClient(selectedClient)
+                    ? "Delete client and all Cloudinary files"
+                    : "Only the creator or a Master Admin can delete this client"
+                }
+                style={{
+                  opacity: canDeleteClient(selectedClient) ? 1 : 0.45,
+                  cursor: canDeleteClient(selectedClient) ? "pointer" : "not-allowed",
+                }}
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="3 6 5 6 21 6" />
@@ -710,6 +737,14 @@ export default function ClientsManager({ user }: ClientsManagerProps) {
                       {selectedClient.source === "website" ? "Automatic" : "Manual"}
                     </span>
                   </span>
+                  {selectedClient.createdBy && (
+                    <>
+                      <span className="client-meta-separator">•</span>
+                      <span className="client-meta-tag">
+                        <strong>Added by:</strong> {selectedClient.createdBy.name || selectedClient.createdBy.identifier}
+                      </span>
+                    </>
+                  )}
                   <span className="client-meta-separator">•</span>
                   <span className="client-meta-tag">
                     Added {new Date(selectedClient.createdAt).toLocaleDateString("en-GB", {
@@ -837,9 +872,17 @@ export default function ClientsManager({ user }: ClientsManagerProps) {
                 <button
                   type="button"
                   onClick={() => handleDeleteClient(selectedClient.id)}
-                  disabled={deletingClientId === selectedClient.id}
+                  disabled={deletingClientId === selectedClient.id || !canDeleteClient(selectedClient)}
                   className="client-delete-action-btn"
-                  title="Permanently delete this client"
+                  title={
+                    canDeleteClient(selectedClient)
+                      ? "Permanently delete this client"
+                      : "Only the creator or a Master Admin can delete this client"
+                  }
+                  style={{
+                    opacity: canDeleteClient(selectedClient) ? 1 : 0.45,
+                    cursor: canDeleteClient(selectedClient) ? "pointer" : "not-allowed",
+                  }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="3 6 5 6 21 6" />
@@ -1343,6 +1386,11 @@ export default function ClientsManager({ user }: ClientsManagerProps) {
                         <span className={`client-source-pill ${client.source === "website" ? "automatic" : "manual"}`}>
                           {client.source === "website" ? "Automatic" : "Manual"}
                         </span>
+                        {client.createdBy && (
+                          <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>
+                            by {client.createdBy.name || client.createdBy.identifier}
+                          </div>
+                        )}
                       </td>
 
                       {/* Status: Color dot only (no text) */}
@@ -1497,6 +1545,11 @@ export default function ClientsManager({ user }: ClientsManagerProps) {
                           <span className={`client-source-pill ${client.source === "website" ? "automatic" : "manual"}`}>
                             {client.source === "website" ? "Automatic" : "Manual"}
                           </span>
+                          {client.createdBy && (
+                            <span style={{ fontSize: "11px", color: "#64748b", marginLeft: "6px" }}>
+                              by {client.createdBy.name || client.createdBy.identifier}
+                            </span>
+                          )}
                         </div>
                       </div>
 
