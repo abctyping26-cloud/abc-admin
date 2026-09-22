@@ -6,6 +6,7 @@ import DashboardHeader from "./components/DashboardHeader";
 import DashboardSidebar, { type SidebarTab } from "./components/DashboardSidebar";
 import DashboardContent from "./components/DashboardContent";
 import { useInactivityTimeout } from "./hooks/useInactivityTimeout";
+import { API_BASE_URL } from "./config/api";
 
 function subscribe(callback: () => void) {
   window.addEventListener("storage", callback);
@@ -98,8 +99,7 @@ export default function Home() {
   useEffect(() => {
     const fetchWaCount = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-        const res = await fetch(`${apiUrl}/api/v1/whatsapp/conversations`);
+        const res = await fetch(`${API_BASE_URL}/api/v1/whatsapp/conversations`);
         if (res.ok) {
           const json = await res.json();
           if (json.success && json.counts) {

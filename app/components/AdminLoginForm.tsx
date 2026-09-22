@@ -2,9 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { API_BASE_URL } from "../config/api";
 
 async function detectClientLocation(): Promise<{
   location: string;
@@ -132,38 +130,31 @@ export default function AdminLoginForm() {
           }),
         });
       } catch {
-        // Network error; will attempt local/seed fallback below
+        throw new Error(
+          "Cannot connect to the server. The backend service may be waking up from sleep (takes ~30-50s on Render). Please wait a moment and try again."
+        );
       }
 
-      let adminData = null;
-      let token = null;
+      if (!response) {
+        throw new Error("No response received from the server. Please try again.");
+      }
 
-      if (response && response.ok) {
-        const data = await response.json();
-        token = data.data?.token;
-        adminData = data.data?.admin;
-      } else if (isMasterAdminCreds) {
-        token = "master_admin_token_" + Date.now();
-        adminData = {
-          id: "master_admin",
-          identifier: "masteradmin@abc.com",
-          role: "master_admin",
-          name: "Master Admin",
-          location: clientMeta.location,
-          device: clientMeta.device,
-          profileCompleted: true,
-          isFirstLogin: false,
-        };
-      } else {
-        const errorData = response
-          ? await response.json().catch(() => ({}))
-          : {};
-        if (response && response.status === 404) {
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        if (response.status === 404) {
           setIsNotFound(true);
         }
         throw new Error(
-          errorData.message || "Invalid admin credentials or account does not exist."
+          data.message || "Invalid admin credentials or account does not exist."
         );
+      }
+
+      const token = data.data?.token;
+      const adminData = data.data?.admin;
+
+      if (!token || !adminData) {
+        throw new Error("Incomplete authentication payload received from server.");
       }
 
       // Store admin authentication token

@@ -5,9 +5,7 @@ import type { SidebarTab } from "./DashboardSidebar";
 import DatabaseLoadingOverlay from "./DatabaseLoadingOverlay";
 import ClientsManager from "./ClientsManager";
 import WhatsAppEnquiriesManager from "./WhatsAppEnquiriesManager";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { API_BASE_URL } from "../config/api";
 
 export interface WorkerAdminUser {
   id: string;
