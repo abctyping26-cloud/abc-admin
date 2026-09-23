@@ -5,6 +5,7 @@ import type { SidebarTab } from "./DashboardSidebar";
 import DatabaseLoadingOverlay from "./DatabaseLoadingOverlay";
 import ClientsManager from "./ClientsManager";
 import WhatsAppEnquiriesManager from "./WhatsAppEnquiriesManager";
+import CloudUsageSection from "./CloudUsageSection";
 import { API_BASE_URL } from "../config/api";
 
 export interface WorkerAdminUser {
@@ -1064,6 +1065,9 @@ export default function DashboardContent({
                 </span>
               </div>
             </div>
+
+            {/* Cloud & Infrastructure Usage (Cloudinary, MongoDB Atlas, Render) */}
+            <CloudUsageSection getAuthHeaders={getAdminAuthHeaders} />
           </>
         ) : (
           <>
@@ -1162,9 +1166,13 @@ export default function DashboardContent({
                 </span>
               </div>
             </div>
+
+            {/* Cloud & Infrastructure Usage (Cloudinary, MongoDB Atlas, Render) */}
+            <CloudUsageSection getAuthHeaders={getAdminAuthHeaders} />
           </>
         )
       )}
+
 
       {/* -------------------------------------------------------------
           TAB: ENQUIRIES (Accessible to both Master Admin & Worker Admins)
