@@ -5739,335 +5739,136 @@
   animation: fadeIn 0.15s ease-out;
 }
 
-/* --- Metrics Grid --- */
-.services-metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-  margin-bottom: 8px;
-}
-
-.service-metric-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-}
-
-.service-metric-card .metric-label {
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #64748b;
-}
-
-.service-metric-card .metric-value {
-  font-size: 1.65rem;
-  font-weight: 800;
-  color: #0f172a;
-  line-height: 1.2;
-}
-
-.service-metric-card .metric-value.text-accent {
-  color: #1868db;
-}
-
-.service-metric-card .metric-sub {
-  font-size: 0.75rem;
-  color: #94a3b8;
-}
-
-/* --- Toolbar (Search & Filters) --- */
-.services-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  background: #ffffff;
-  padding: 14px 18px;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-}
-
-.services-search-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  border-radius: 9999px;
-  padding: 8px 16px;
-  flex: 1;
-  min-width: 260px;
-  transition: border-color 0.15s ease;
-}
-
-.services-search-wrapper:focus-within {
-  border-color: #1868db;
-  background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(24, 104, 219, 0.1);
-}
-
-.services-search-wrapper .search-icon {
-  color: #94a3b8;
-  flex-shrink: 0;
-}
-
-.services-search-input {
-  border: none;
-  background: transparent;
-  outline: none;
-  font-size: 0.86rem;
-  color: #0f172a;
-  width: 100%;
-}
-
-.services-search-clear {
-  border: none;
-  background: none;
-  color: #94a3b8;
-  cursor: pointer;
-  font-size: 0.85rem;
-  padding: 2px 6px;
-  border-radius: 50%;
-}
-
-.services-search-clear:hover {
-  color: #0f172a;
-  background: #e2e8f0;
-}
-
-.services-filter-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.services-filter-group .filter-label {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #475569;
-}
-
-.services-category-select {
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 0.84rem;
-  color: #0f172a;
-  font-weight: 500;
-  outline: none;
-  cursor: pointer;
-  max-width: 240px;
-}
-
-.services-category-select:focus {
-  border-color: #1868db;
-}
-
-.services-status-pills {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #f1f5f9;
-  padding: 4px;
-  border-radius: 9999px;
-}
-
-.status-filter-pill {
-  border: none;
-  background: transparent;
-  padding: 6px 14px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-radius: 9999px;
-  color: #64748b;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.status-filter-pill:hover {
-  color: #0f172a;
-}
-
-.status-filter-pill.active {
-  background: #ffffff;
-  color: #0f172a;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-}
-
-/* --- Services Cards Grid --- */
-.services-cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 18px;
-}
-
-.service-overview-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-  position: relative;
-}
-
-.service-overview-card:hover {
-  border-color: #1868db;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-}
-
-.service-overview-card.is-customized {
-  border-left: 4px solid #1868db;
-}
-
-.card-top-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.card-category-badge {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #1868db;
-  background: #e8f1fc;
-  padding: 4px 10px;
-  border-radius: 9999px;
-}
-
-.card-customized-badge {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: #059669;
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  padding: 3px 8px;
-  border-radius: 9999px;
-}
-
-.card-default-badge {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: #64748b;
-  background: #f1f5f9;
-  padding: 3px 8px;
-  border-radius: 9999px;
-}
-
-.card-service-title {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0 0 8px 0;
-  line-height: 1.35;
-}
-
-.card-service-tagline {
-  font-size: 0.82rem;
-  color: #475569;
-  line-height: 1.5;
-  margin: 0 0 16px 0;
-  flex: 1;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.card-bottom-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 14px;
-  border-top: 1px solid #f1f5f9;
-  margin-top: auto;
-}
-
-.card-doc-count-badge {
+/* --- Services Category Dropdown Pill --- */
+.services-category-select-wrapper {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #334155;
 }
 
-.card-arrow-link {
-  font-size: 0.8rem;
+.services-category-select-pill {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.services-category-select-pill:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.services-category-select-pill:focus {
+  border-color: #0f172a;
+}
+
+/* --- Service Avatar Badge (Initials / Service ID) --- */
+.service-avatar-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: monospace;
+}
+
+/* --- Service Category Pill in Table --- */
+.service-table-category-pill {
+  display: inline-block;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* --- Required Documents Count in Table --- */
+.service-doc-table-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.service-doc-table-badge .doc-count-number {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.service-doc-table-badge .doc-mandatory-tag {
+  font-size: 0.74rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* --- Status Gray Dot (Standard Catalog Default) --- */
+.legend-dot.gray {
+  background-color: #94a3b8;
+  box-shadow: 0 0 4px rgba(148, 163, 184, 0.4);
+}
+
+.client-status-dot-btn.status-gray {
+  background-color: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+}
+
+.client-status-dot-btn.status-gray .status-dot-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #94a3b8;
+  box-shadow: 0 0 4px rgba(148, 163, 184, 0.4);
+}
+
+/* --- Updated Cell in Table --- */
+.service-updated-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.service-updated-cell .updated-date {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.service-updated-cell .updated-by {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+/* --- Manage Docs Arrow --- */
+.service-table-arrow {
+  font-size: 0.82rem;
   font-weight: 700;
   color: #1868db;
   transition: transform 0.15s ease;
+  white-space: nowrap;
 }
 
-.service-overview-card:hover .card-arrow-link {
-  transform: translateX(3px);
+.client-table-row:hover .service-table-arrow {
+  transform: translateX(4px);
 }
 
-/* Empty State */
-.services-empty-state {
-  background: #ffffff;
-  border: 1px dashed #cbd5e1;
-  border-radius: 16px;
-  padding: 48px 24px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-.services-empty-state .empty-icon {
-  font-size: 2.2rem;
-}
-
-.services-empty-state h3 {
-  margin: 0;
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.services-empty-state p {
-  margin: 0;
-  font-size: 0.86rem;
-  color: #64748b;
-}
-
-/* Loading Skeleton */
-.services-grid-skeleton {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 18px;
-}
-
-.service-card-skeleton {
-  background: #f1f5f9;
-  height: 180px;
-  border-radius: 14px;
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 0.3; }
-}
 
 /* ==========================================================================
    IN-CONTENT SERVICE DETAILS WORKSPACE

@@ -865,119 +865,93 @@ export default function ServicesManager({ user }: ServicesManagerProps) {
         </div>
       ) : (
         /* ====================================================================
-           SERVICES LIST WORKSPACE
+           SERVICES LIST WORKSPACE (Matches Clients & File Management UI)
            ==================================================================== */
         <div className="services-list-workspace">
-          {/* Header Row */}
-          <div className="content-header-row">
+          {/* Page Title & Actions matching Clients & File Management exactly */}
+          <div className="content-header-row" style={{ marginBottom: "20px" }}>
             <div>
-              <h1 className="content-main-title">Services & Documentation</h1>
-              <p className="content-sub-title">
-                Manage required documentation checklists and prerequisites across all {services.length} official services.
+              <h1 className="content-title">Services & Documentation</h1>
+              <p className="content-subtitle">
+                Manage required documentation checklists, applicant prerequisites, and service descriptions across all {services.length} official services.
               </p>
             </div>
           </div>
 
-          {/* Quick Metrics Bar */}
-          <div className="services-metrics-grid">
-            <div className="service-metric-card">
-              <span className="metric-label">Total Services</span>
-              <span className="metric-value">{services.length || 69}</span>
-              <span className="metric-sub">Across {categoriesList.length || 9} Categories</span>
-            </div>
-            <div className="service-metric-card">
-              <span className="metric-label">Customized Checklists</span>
-              <span className="metric-value text-accent">{totalCustomized}</span>
-              <span className="metric-sub">Edited in MongoDB</span>
-            </div>
-            <div className="service-metric-card">
-              <span className="metric-label">Standard Checklists</span>
-              <span className="metric-value">{services.length - totalCustomized}</span>
-              <span className="metric-sub">Using baseline catalog</span>
-            </div>
-            <div className="service-metric-card">
-              <span className="metric-label">Total Required Documents</span>
-              <span className="metric-value">{totalDocsCount}</span>
-              <span className="metric-sub">Checklist items configured</span>
-            </div>
-          </div>
+          {/* Metric / Filter Tabs & Search Bar matching Clients Toolbar */}
+          <div className="clients-toolbar" style={{ marginBottom: "16px" }}>
+            <div className="clients-filter-pills">
+              <button
+                type="button"
+                className={`client-filter-pill ${statusFilter === "all" ? "active" : ""}`}
+                onClick={() => setStatusFilter("all")}
+              >
+                All Services <span className="pill-count">{services.length}</span>
+              </button>
+              <button
+                type="button"
+                className={`client-filter-pill ${statusFilter === "customized" ? "active" : ""}`}
+                onClick={() => setStatusFilter("customized")}
+              >
+                <span className="legend-dot green" />
+                Customized <span className="pill-count">{totalCustomized}</span>
+              </button>
+              <button
+                type="button"
+                className={`client-filter-pill ${statusFilter === "default" ? "active" : ""}`}
+                onClick={() => setStatusFilter("default")}
+              >
+                <span className="legend-dot gray" />
+                Default <span className="pill-count">{services.length - totalCustomized}</span>
+              </button>
 
-          {/* Filter & Search Bar */}
-          <div className="services-toolbar">
-            {/* Search Input */}
-            <div className="services-search-wrapper">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="search-icon">
+              {/* Category Dropdown Pill */}
+              <div className="services-category-select-wrapper">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="services-category-select-pill"
+                  aria-label="Filter by service category"
+                >
+                  <option value="all">All Categories ({categoriesList.length})</option>
+                  {categoriesList.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Search Box on right */}
+            <div className="clients-search-box">
+              <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
               <input
                 type="text"
+                placeholder="Search by service name, category, document..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search services, category names, or document titles..."
-                className="services-search-input"
+                className="clients-search-input"
               />
               {searchQuery && (
                 <button
                   type="button"
+                  className="search-clear-btn"
                   onClick={() => setSearchQuery("")}
-                  className="services-search-clear"
                   title="Clear search"
                 >
                   ✕
                 </button>
               )}
             </div>
-
-            {/* Category Filter Select */}
-            <div className="services-filter-group">
-              <label htmlFor="category-filter-select" className="filter-label">
-                Category:
-              </label>
-              <select
-                id="category-filter-select"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="services-category-select"
-              >
-                <option value="all">All Categories ({categoriesList.length})</option>
-                {categoriesList.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Status Filter Buttons */}
-            <div className="services-status-pills">
-              <button
-                type="button"
-                onClick={() => setStatusFilter("all")}
-                className={`status-filter-pill ${statusFilter === "all" ? "active" : ""}`}
-              >
-                All ({services.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("customized")}
-                className={`status-filter-pill ${statusFilter === "customized" ? "active" : ""}`}
-              >
-                Customized ({totalCustomized})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("default")}
-                className={`status-filter-pill ${statusFilter === "default" ? "active" : ""}`}
-              >
-                Default ({services.length - totalCustomized})
-              </button>
-            </div>
           </div>
 
           {/* Error Message */}
           {fetchError && (
-            <div className="service-alert-toast error">
+            <div className="service-alert-toast error" style={{ marginBottom: "16px" }}>
               <span>{fetchError}</span>
               <button
                 type="button"
@@ -989,17 +963,23 @@ export default function ServicesManager({ user }: ServicesManagerProps) {
             </div>
           )}
 
-          {/* Loading Skeleton */}
+          {/* Main Services Table / Grid */}
           {isLoading ? (
-            <div className="services-grid-skeleton">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="service-card-skeleton" />
-              ))}
+            <div className="clients-empty-state">
+              <div className="db-spinner-svg" style={{ margin: "0 auto 12px" }}>
+                <svg viewBox="0 0 24 24" fill="none" width="28" height="28">
+                  <circle cx="12" cy="12" r="10" stroke="#cbd5e1" strokeWidth="3" />
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
+                </svg>
+              </div>
+              <p>Loading real-time service records from MongoDB...</p>
             </div>
           ) : filteredServices.length === 0 ? (
-            /* Empty State */
-            <div className="services-empty-state">
-              <div className="empty-icon">🔍</div>
+            <div className="clients-empty-state">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
               <h3>No services match your filters</h3>
               <p>Try searching for a different keyword or select &ldquo;All Categories&rdquo;.</p>
               <button
@@ -1009,70 +989,142 @@ export default function ServicesManager({ user }: ServicesManagerProps) {
                   setSelectedCategory("all");
                   setStatusFilter("all");
                 }}
-                className="service-btn-secondary"
+                className="capsule-btn-outline"
+                style={{ marginTop: "12px" }}
               >
                 Clear All Filters
               </button>
             </div>
           ) : (
-            /* Services Grid */
-            <div className="services-cards-grid">
-              {filteredServices.map((service) => {
-                const docCount = service.requiredDocuments?.length || 0;
-                const mandatoryCount =
-                  service.requiredDocuments?.filter((d) => d.mandatory).length || 0;
+            <div className="clients-table-wrapper">
+              {/* Status Legend Bar above the table box */}
+              <div className="clients-table-legend-bar">
+                <div className="legend-items">
+                  <span className="legend-title">STATUS:</span>
+                  <span className="legend-item">
+                    <span className="legend-dot green" />
+                    <span>Green for Customized</span>
+                  </span>
+                  <span className="legend-separator">•</span>
+                  <span className="legend-item">
+                    <span className="legend-dot gray" />
+                    <span>Gray for Standard Default</span>
+                  </span>
+                </div>
+                <span className="legend-hint">Click anywhere on a row to open documentation & details</span>
+              </div>
 
-                return (
-                  <div
-                    key={service.slug}
-                    className={`service-overview-card ${service.isCustomized ? "is-customized" : ""}`}
-                    onClick={() => handleSelectService(service)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleSelectService(service);
-                      }
-                    }}
-                  >
-                    <div className="card-top-meta">
-                      <span className="card-category-badge">
-                        {service.category?.shortName || service.category?.name || "Service"}
-                      </span>
-                      {service.isCustomized ? (
-                        <span className="card-customized-badge" title="Customized in database">
-                          ⚡ Customized
-                        </span>
-                      ) : (
-                        <span className="card-default-badge">Default</span>
-                      )}
-                    </div>
+              <div className="clients-table-card">
+                <table className="clients-table">
+                  <thead>
+                    <tr>
+                      <th>SERVICE</th>
+                      <th>CATEGORY</th>
+                      <th>REQUIRED DOCUMENTS</th>
+                      <th style={{ textAlign: "center" }}>STATUS</th>
+                      <th>LAST UPDATED</th>
+                      <th style={{ textAlign: "right", width: "120px" }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredServices.map((service) => {
+                      const docCount = service.requiredDocuments?.length || 0;
+                      const mandatoryCount =
+                        service.requiredDocuments?.filter((d) => d.mandatory).length || 0;
 
-                    <h3 className="card-service-title">{service.name}</h3>
+                      return (
+                        <tr
+                          key={service.slug}
+                          onClick={() => handleSelectService(service)}
+                          className="client-table-row"
+                        >
+                          {/* Service Identity (Badge + Name + Slug) */}
+                          <td>
+                            <div className="client-identity-cell">
+                              <div className="service-avatar-badge">
+                                {service.serviceId.toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="client-name-title">
+                                  {service.name}
+                                </div>
+                                <div className="client-id-sub">
+                                  /{service.slug}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
 
-                    <p className="card-service-tagline">
-                      {service.tagline || "Professional UAE government & typing service."}
-                    </p>
+                          {/* Category */}
+                          <td>
+                            <span className="service-table-category-pill">
+                              {service.category?.shortName || service.category?.name}
+                            </span>
+                          </td>
 
-                    <div className="card-bottom-footer">
-                      <div className="card-doc-count-badge">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <polyline points="9 11 12 14 22 4" />
-                          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-                        </svg>
-                        <span>
-                          {docCount} docs ({mandatoryCount} mandatory)
-                        </span>
-                      </div>
+                          {/* Required Documents Count */}
+                          <td>
+                            <div className="service-doc-table-badge">
+                              <span className="doc-count-number">{docCount} docs</span>
+                              <span className="doc-mandatory-tag">({mandatoryCount} mandatory)</span>
+                            </div>
+                          </td>
 
-                      <span className="card-arrow-link">
-                        Manage Docs →
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                          {/* Status Dot */}
+                          <td style={{ textAlign: "center" }}>
+                            <span
+                              className={`client-status-dot-btn ${
+                                service.isCustomized ? "status-green" : "status-gray"
+                              }`}
+                              title={
+                                service.isCustomized
+                                  ? "Customized in Database"
+                                  : "Standard Catalog Default"
+                              }
+                              aria-label={service.isCustomized ? "Customized" : "Default"}
+                            >
+                              <span className="status-dot-indicator" />
+                            </span>
+                          </td>
+
+                          {/* Last Updated */}
+                          <td>
+                            <div className="service-updated-cell">
+                              {service.isCustomized ? (
+                                <>
+                                  <div className="updated-date">
+                                    {service.updatedAt
+                                      ? new Date(service.updatedAt).toLocaleDateString("en-GB", {
+                                          day: "numeric",
+                                          month: "short",
+                                          year: "numeric",
+                                        })
+                                      : "Customized"}
+                                  </div>
+                                  <div className="updated-by">
+                                    by {service.updatedBy?.name || service.updatedBy?.identifier || "Admin"}
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="text-muted" style={{ fontSize: "0.82rem" }}>
+                                  Catalog Default
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Action Arrow */}
+                          <td style={{ textAlign: "right" }}>
+                            <span className="service-table-arrow">
+                              Manage Docs →
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
