@@ -783,7 +783,8 @@
   }
 
   /* Replace wide table on mobile with expandable client card boxes */
-  .clients-table-card {
+  .clients-table-card,
+  .clients-table-container {
     display: none !important;
   }
 
@@ -1224,6 +1225,10 @@
 
 .admin-table tbody tr:hover td {
   background-color: #ffffff;
+}
+
+.admin-table tbody tr.client-table-row:hover td {
+  background-color: #f8fafc;
 }
 
 .admin-checkbox {

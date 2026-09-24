@@ -1034,9 +1034,6 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
           <div className="content-header-row" style={{ marginBottom: "20px" }}>
         <div>
           <h1 className="content-title">Clients & File Management</h1>
-          <p className="content-subtitle">
-            Manage online users, offline client profiles, service completion statuses, and Cloudinary attachments.
-          </p>
         </div>
         <button
           type="button"
@@ -1279,33 +1276,28 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
         </div>
       ) : (
         <div className="clients-table-wrapper">
-          {/* Status Legend Bar above the table box */}
-          <div className="clients-table-legend-bar">
-            <div className="legend-items">
-              <span className="legend-title">Status:</span>
-              <span className="legend-item">
-                <span className="legend-dot orange" />
-                <span>Orange for Progress</span>
-              </span>
-              <span className="legend-separator">•</span>
-              <span className="legend-item">
-                <span className="legend-dot green" />
-                <span>Green for Completed</span>
-              </span>
-            </div>
-            <span className="legend-hint">Click anywhere on a row to open files & details</span>
-          </div>
-
-          <div className="clients-table-card">
-            <table className="clients-table">
+          <div className="admin-table-container clients-table-container">
+            <table className="admin-table">
               <thead>
                 <tr>
-                  <th>Client</th>
-                  <th>Contact</th>
-                  <th>Address & PIN</th>
-                  <th>Source</th>
-                  <th style={{ textAlign: "center" }}>Status</th>
-                  <th style={{ textAlign: "center" }}>Files</th>
+                  <th>
+                    <span className="th-inner">Client Name</span>
+                  </th>
+                  <th>
+                    <span className="th-inner">Phone &amp; Contact</span>
+                  </th>
+                  <th>
+                    <span className="th-inner">Address &amp; PIN</span>
+                  </th>
+                  <th>
+                    <span className="th-inner">Source</span>
+                  </th>
+                  <th style={{ textAlign: "center" }}>
+                    <span className="th-inner" style={{ justifyContent: "center" }}>Status</span>
+                  </th>
+                  <th style={{ textAlign: "center" }}>
+                    <span className="th-inner" style={{ justifyContent: "center" }}>Files</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1320,27 +1312,28 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
                       key={client.id}
                       onClick={() => openClientDetails(client)}
                       className="client-table-row"
+                      style={{ cursor: "pointer" }}
                     >
                       {/* Avatar & Name */}
                       <td>
-                        <div className="client-identity-cell">
+                        <div className="admin-user-cell">
                           {client.photo?.url ? (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img
                               src={client.photo.url}
                               alt={client.name || "Client"}
-                              className="client-avatar-img"
+                              className="admin-avatar-photo"
                             />
                           ) : (
-                            <div className="client-avatar-placeholder">
+                            <div className="admin-avatar-photo">
                               {initials}
                             </div>
                           )}
                           <div>
-                            <div className="client-name-title">
+                            <div style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.88rem" }}>
                               {client.name || "Unnamed Client"}
                             </div>
-                            <div className="client-id-sub">
+                            <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
                               ID: {client.identifier}
                             </div>
                           </div>
@@ -1349,35 +1342,34 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
 
                       {/* Contact */}
                       <td>
-                        <div className="client-contact-cell">
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                           {client.phone && (
-                            <div className="client-contact-item">
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                              </svg>
-                              <span>{client.phone}</span>
-                            </div>
+                            <span style={{ fontSize: "0.85rem", color: "#0f172a" }}>
+                              {client.phone}
+                            </span>
                           )}
                           {client.email && (
-                            <div className="client-contact-item">
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                                <polyline points="22,6 12,13 2,6" />
-                              </svg>
-                              <span>{client.email}</span>
-                            </div>
+                            <span style={{ fontSize: "0.80rem", color: "#64748b" }}>
+                              {client.email}
+                            </span>
                           )}
                           {!client.phone && !client.email && (
-                            <span className="text-muted">—</span>
+                            <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>—</span>
                           )}
                         </div>
                       </td>
 
                       {/* Address & PIN */}
                       <td>
-                        <div className="client-address-cell">
-                          <div>{client.address || "—"}</div>
-                          {client.pin && <div className="client-pin-sub">PIN: {client.pin}</div>}
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                          <div style={{ fontSize: "0.85rem", color: "#334155" }}>
+                            {client.address || "—"}
+                          </div>
+                          {client.pin && (
+                            <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                              PIN: {client.pin}
+                            </div>
+                          )}
                         </div>
                       </td>
 
@@ -1393,7 +1385,7 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
                         )}
                       </td>
 
-                      {/* Status: Color dot only (no text) */}
+                      {/* Status: Color dot only */}
                       <td style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"

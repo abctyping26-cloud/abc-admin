@@ -84,6 +84,15 @@ export default function ServicesManager({ user }: ServicesManagerProps) {
   // Interactive preview state inside detail view
   const [previewCheckedDocs, setPreviewCheckedDocs] = useState<Record<number, boolean>>({});
 
+  // Add new service form state (inline in content section)
+  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
+  const [isCreatingService, setIsCreatingService] = useState(false);
+  const [addServiceError, setAddServiceError] = useState("");
+  const [newServiceName, setNewServiceName] = useState("");
+  const [newServiceCategory, setNewServiceCategory] = useState("business-setup");
+  const [newServiceTagline, setNewServiceTagline] = useState("");
+  const [newServiceSlug, setNewServiceSlug] = useState("");
+
   // Helper: admin authentication headers
   const getAuthHeaders = useCallback((): Record<string, string> => {
     const headers: Record<string, string> = {
@@ -349,6 +358,58 @@ export default function ServicesManager({ user }: ServicesManagerProps) {
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [services]);
 
+  // Handle creating a new service in MongoDB
+  const handleCreateService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newServiceName.trim()) {
+      setAddServiceError("Service name is required.");
+      return;
+    }
+
+    setIsCreatingService(true);
+    setAddServiceError("");
+
+    const matchedCategory = categoriesList.find((c) => c.id === newServiceCategory);
+    const categoryPayload = matchedCategory
+      ? { id: matchedCategory.id, name: matchedCategory.name, shortName: matchedCategory.name }
+      : { id: newServiceCategory || "general", name: newServiceCategory || "General Services", shortName: newServiceCategory || "General" };
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/services`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: newServiceName.trim(),
+          category: categoryPayload,
+          tagline: newServiceTagline.trim(),
+          slug: newServiceSlug.trim() || undefined,
+          requiredDocuments: [],
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || "Failed to create service in database");
+      }
+
+      const createdService: ServiceItem = json.data?.service;
+      if (createdService) {
+        setServices((prev) => [createdService, ...prev]);
+        setIsAddFormOpen(false);
+        setNewServiceName("");
+        setNewServiceTagline("");
+        setNewServiceSlug("");
+        // Open the newly created service immediately
+        handleSelectService(createdService);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error creating service";
+      setAddServiceError(msg);
+    } finally {
+      setIsCreatingService(false);
+    }
+  };
+
   // Filtered services
   const filteredServices = useMemo(() => {
     return services.filter((s) => {
@@ -417,14 +478,6 @@ export default function ServicesManager({ user }: ServicesManagerProps) {
             </button>
 
             <div className="service-top-actions">
-              <span
-                className={`service-status-pill ${
-                  selectedService.isCustomized ? "customized" : "default"
-                }`}
-              >
-                {selectedService.isCustomized ? "⚡ Customized in DB" : "Standard Catalog"}
-              </span>
-
               {/* View Live on Public Website */}
               <a
                 href={`https://abctyping.ae/services/${selectedService.slug}`}
@@ -577,9 +630,6 @@ export default function ServicesManager({ user }: ServicesManagerProps) {
                     <h2 className="service-section-title">
                       Required Documentation Checklist
                     </h2>
-                    <p className="service-section-desc">
-                      Configure the exact documents required for this service. You can edit titles, descriptions, reorder items, and mark requirements as Mandatory or Optional.
-                    </p>
                   </div>
                   {!isAddingDoc && (
                     <button
@@ -780,12 +830,9 @@ export default function ServicesManager({ user }: ServicesManagerProps) {
               <div className="service-preview-sticky-box">
                 <div className="service-preview-header">
                   <div className="preview-badge-row">
-                    <span className="live-preview-pill">👁️ Live Customer Preview</span>
+                    <span className="live-preview-pill">Live Customer Preview</span>
                     <span className="preview-note">Exactly as rendered on website</span>
                   </div>
-                  <p className="preview-helper-text">
-                    This preview automatically reflects your edits above. The design, fonts, checkboxes, and badges match the live public site.
-                  </p>
                 </div>
 
                 {/* Render identical to ServiceDetailView.tsx */}
@@ -868,15 +915,142 @@ export default function ServicesManager({ user }: ServicesManagerProps) {
            SERVICES LIST WORKSPACE (Matches Clients & File Management UI)
            ==================================================================== */
         <div className="services-list-workspace">
-          {/* Page Title & Actions matching Clients & File Management exactly */}
+          {/* Page Title & Actions matching Clients & File Management */}
           <div className="content-header-row" style={{ marginBottom: "20px" }}>
             <div>
               <h1 className="content-title">Services & Documentation</h1>
-              <p className="content-subtitle">
-                Manage required documentation checklists, applicant prerequisites, and service descriptions across all {services.length} official services.
-              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setAddServiceError("");
+                setIsAddFormOpen((prev) => !prev);
+              }}
+              className={isAddFormOpen ? "capsule-btn-outline" : "capsule-btn-black"}
+              style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
+            >
+              {isAddFormOpen ? (
+                <>
+                  <span>✕</span>
+                  <span>Cancel</span>
+                </>
+              ) : (
+                <>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <span>Add Service</span>
+                </>
+              )}
+            </button>
           </div>
+
+          {/* ====================================================================
+              INLINE ADD SERVICE FORM (Inside content section, not a popup)
+              ==================================================================== */}
+          {isAddFormOpen && (
+            <div className="client-inline-form-card" style={{ marginBottom: "20px" }}>
+              <div className="client-inline-form-header">
+                <div>
+                  <h2 className="client-inline-form-title">Add New Service</h2>
+                  <p className="client-inline-form-subtitle">
+                    Create a new service entry. You can configure required documents and checklist items immediately.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="client-inline-close-btn"
+                  onClick={() => setIsAddFormOpen(false)}
+                  title="Close form"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {addServiceError && (
+                <div className="admin-modal-error" style={{ marginBottom: "16px" }}>
+                  {addServiceError}
+                </div>
+              )}
+
+              <form onSubmit={handleCreateService} className="admin-modal-form">
+                <div className="admin-form-field">
+                  <label className="admin-form-label">Service Name *</label>
+                  <input
+                    type="text"
+                    value={newServiceName}
+                    onChange={(e) => setNewServiceName(e.target.value)}
+                    placeholder="e.g. Trade License Renewal"
+                    className="admin-form-input"
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                  <div className="admin-form-field">
+                    <label className="admin-form-label">Category</label>
+                    <select
+                      value={newServiceCategory}
+                      onChange={(e) => setNewServiceCategory(e.target.value)}
+                      className="admin-form-input"
+                      style={{ cursor: "pointer" }}
+                    >
+                      {categoriesList.length > 0 ? (
+                        categoriesList.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="business-setup">Business Setup</option>
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="admin-form-field">
+                    <label className="admin-form-label">URL Slug (Optional)</label>
+                    <input
+                      type="text"
+                      value={newServiceSlug}
+                      onChange={(e) => setNewServiceSlug(e.target.value)}
+                      placeholder="e.g. trade-license-renewal"
+                      className="admin-form-input"
+                    />
+                  </div>
+                </div>
+
+                <div className="admin-form-field">
+                  <label className="admin-form-label">Tagline / Short Description</label>
+                  <input
+                    type="text"
+                    value={newServiceTagline}
+                    onChange={(e) => setNewServiceTagline(e.target.value)}
+                    placeholder="e.g. Fast, official renewal of commercial licenses in the UAE"
+                    className="admin-form-input"
+                  />
+                </div>
+
+                <div className="admin-modal-actions" style={{ marginTop: "20px", justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddFormOpen(false)}
+                    className="capsule-btn-outline"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreatingService}
+                    className="capsule-btn-black"
+                  >
+                    {isCreatingService ? "Creating Service..." : "Create Service"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
           {/* Metric / Filter Tabs & Search Bar matching Clients Toolbar */}
           <div className="clients-toolbar" style={{ marginBottom: "16px" }}>
@@ -996,135 +1170,70 @@ export default function ServicesManager({ user }: ServicesManagerProps) {
               </button>
             </div>
           ) : (
-            <div className="clients-table-wrapper">
-              {/* Status Legend Bar above the table box */}
-              <div className="clients-table-legend-bar">
-                <div className="legend-items">
-                  <span className="legend-title">STATUS:</span>
-                  <span className="legend-item">
-                    <span className="legend-dot green" />
-                    <span>Green for Customized</span>
-                  </span>
-                  <span className="legend-separator">•</span>
-                  <span className="legend-item">
-                    <span className="legend-dot gray" />
-                    <span>Gray for Standard Default</span>
-                  </span>
-                </div>
-                <span className="legend-hint">Click anywhere on a row to open documentation & details</span>
-              </div>
+            <div className="admin-table-container services-table-container">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>
+                      <span className="th-inner">Service Name</span>
+                    </th>
+                    <th>
+                      <span className="th-inner">Category</span>
+                    </th>
+                    <th>
+                      <span className="th-inner">Required Documents</span>
+                    </th>
+                    <th style={{ textAlign: "right" }}>
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredServices.map((service) => {
+                    const docCount = service.requiredDocuments?.length || 0;
+                    const mandatoryCount =
+                      service.requiredDocuments?.filter((d) => d.mandatory).length || 0;
 
-              <div className="clients-table-card">
-                <table className="clients-table">
-                  <thead>
-                    <tr>
-                      <th>SERVICE</th>
-                      <th>CATEGORY</th>
-                      <th>REQUIRED DOCUMENTS</th>
-                      <th style={{ textAlign: "center" }}>STATUS</th>
-                      <th>LAST UPDATED</th>
-                      <th style={{ textAlign: "right", width: "120px" }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredServices.map((service) => {
-                      const docCount = service.requiredDocuments?.length || 0;
-                      const mandatoryCount =
-                        service.requiredDocuments?.filter((d) => d.mandatory).length || 0;
+                    return (
+                      <tr
+                        key={service.slug}
+                        onClick={() => handleSelectService(service)}
+                        className="client-table-row"
+                        style={{ cursor: "pointer" }}
+                      >
+                        {/* Service Name */}
+                        <td>
+                          <div style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.88rem" }}>
+                            {service.name}
+                          </div>
+                        </td>
 
-                      return (
-                        <tr
-                          key={service.slug}
-                          onClick={() => handleSelectService(service)}
-                          className="client-table-row"
-                        >
-                          {/* Service Identity (Badge + Name + Slug) */}
-                          <td>
-                            <div className="client-identity-cell">
-                              <div className="service-avatar-badge">
-                                {service.serviceId.toUpperCase()}
-                              </div>
-                              <div>
-                                <div className="client-name-title">
-                                  {service.name}
-                                </div>
-                                <div className="client-id-sub">
-                                  /{service.slug}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
+                        {/* Category */}
+                        <td>
+                          <span className="service-table-category-pill">
+                            {service.category?.shortName || service.category?.name}
+                          </span>
+                        </td>
 
-                          {/* Category */}
-                          <td>
-                            <span className="service-table-category-pill">
-                              {service.category?.shortName || service.category?.name}
-                            </span>
-                          </td>
+                        {/* Required Documents Count */}
+                        <td>
+                          <div className="service-doc-table-badge">
+                            <span className="doc-count-number">{docCount} docs</span>
+                            <span className="doc-mandatory-tag">({mandatoryCount} mandatory)</span>
+                          </div>
+                        </td>
 
-                          {/* Required Documents Count */}
-                          <td>
-                            <div className="service-doc-table-badge">
-                              <span className="doc-count-number">{docCount} docs</span>
-                              <span className="doc-mandatory-tag">({mandatoryCount} mandatory)</span>
-                            </div>
-                          </td>
-
-                          {/* Status Dot */}
-                          <td style={{ textAlign: "center" }}>
-                            <span
-                              className={`client-status-dot-btn ${
-                                service.isCustomized ? "status-green" : "status-gray"
-                              }`}
-                              title={
-                                service.isCustomized
-                                  ? "Customized in Database"
-                                  : "Standard Catalog Default"
-                              }
-                              aria-label={service.isCustomized ? "Customized" : "Default"}
-                            >
-                              <span className="status-dot-indicator" />
-                            </span>
-                          </td>
-
-                          {/* Last Updated */}
-                          <td>
-                            <div className="service-updated-cell">
-                              {service.isCustomized ? (
-                                <>
-                                  <div className="updated-date">
-                                    {service.updatedAt
-                                      ? new Date(service.updatedAt).toLocaleDateString("en-GB", {
-                                          day: "numeric",
-                                          month: "short",
-                                          year: "numeric",
-                                        })
-                                      : "Customized"}
-                                  </div>
-                                  <div className="updated-by">
-                                    by {service.updatedBy?.name || service.updatedBy?.identifier || "Admin"}
-                                  </div>
-                                </>
-                              ) : (
-                                <span className="text-muted" style={{ fontSize: "0.82rem" }}>
-                                  Catalog Default
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Action Arrow */}
-                          <td style={{ textAlign: "right" }}>
-                            <span className="service-table-arrow">
-                              Manage Docs →
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                        {/* Action Arrow */}
+                        <td style={{ textAlign: "right" }}>
+                          <span className="service-table-arrow">
+                            Manage Docs →
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
