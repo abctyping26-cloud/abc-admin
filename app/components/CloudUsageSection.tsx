@@ -153,10 +153,10 @@ export default function CloudUsageSection({ getAuthHeaders }: CloudUsageSectionP
       <div className="cloud-analytics-header">
         <div>
           <div className="cloud-analytics-title-row">
-            <h2 className="cloud-analytics-title">Infrastructure & Plan Usage</h2>
+            <h1 className="content-title cloud-analytics-title">Cloud & Infrastructure Usage</h1>
             <span className="cloud-analytics-live-tag">Live Metrics</span>
           </div>
-          <p className="cloud-analytics-subtitle">
+          <p className="content-subtitle cloud-analytics-subtitle">
             Real-time usage quotas and resource monitoring for Cloudinary, MongoDB Atlas, and Render.
           </p>
         </div>

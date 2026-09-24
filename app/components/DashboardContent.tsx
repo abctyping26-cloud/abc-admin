@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import type { SidebarTab } from "./DashboardSidebar";
 import DatabaseLoadingOverlay from "./DatabaseLoadingOverlay";
 import ClientsManager from "./ClientsManager";
+import ServicesManager from "./ServicesManager";
 import WhatsAppEnquiriesManager from "./WhatsAppEnquiriesManager";
 import CloudUsageSection from "./CloudUsageSection";
 import { API_BASE_URL } from "../config/api";
@@ -1065,9 +1066,6 @@ export default function DashboardContent({
                 </span>
               </div>
             </div>
-
-            {/* Cloud & Infrastructure Usage (Cloudinary, MongoDB Atlas, Render) */}
-            <CloudUsageSection getAuthHeaders={getAdminAuthHeaders} />
           </>
         ) : (
           <>
@@ -1166,12 +1164,10 @@ export default function DashboardContent({
                 </span>
               </div>
             </div>
-
-            {/* Cloud & Infrastructure Usage (Cloudinary, MongoDB Atlas, Render) */}
-            <CloudUsageSection getAuthHeaders={getAdminAuthHeaders} />
           </>
         )
       )}
+
 
 
       {/* -------------------------------------------------------------
@@ -2372,6 +2368,13 @@ export default function DashboardContent({
       )}
 
       {/* -------------------------------------------------------------
+          TAB: SERVICES & DOCUMENTATION (Master Admin & Worker Admins)
+          ------------------------------------------------------------- */}
+      {activeTab === "services" && (
+        <ServicesManager user={user} isMaster={isMaster} />
+      )}
+
+      {/* -------------------------------------------------------------
           TAB: WORKER ADMINS (Master Admin only)
           ------------------------------------------------------------- */}
       {activeTab === "worker_admins" && isMaster && (
@@ -2864,6 +2867,13 @@ export default function DashboardContent({
             </form>
           </div>
         </div>
+      )}
+
+      {/* -------------------------------------------------------------
+          TAB: CLOUD & INFRASTRUCTURE USAGE (Cloudinary, MongoDB, Render)
+          ------------------------------------------------------------- */}
+      {activeTab === "cloud_usage" && (
+        <CloudUsageSection getAuthHeaders={getAdminAuthHeaders} />
       )}
 
       {/* Modal: Worker Admin First-Time Profile Setup */}

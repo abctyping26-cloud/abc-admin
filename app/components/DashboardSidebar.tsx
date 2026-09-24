@@ -8,7 +8,9 @@ export type SidebarTab =
   | "worker_admins"
   | "enquiries"
   | "whatsapp_enquiries"
-  | "clients";
+  | "clients"
+  | "services"
+  | "cloud_usage";
 
 interface DashboardSidebarProps {
   activeTab: SidebarTab;
@@ -82,7 +84,7 @@ export default function DashboardSidebar({
           </div>
         </button>
 
-        {/* Clients & Services (Available to both Master Admin & Worker Admins) */}
+        {/* Clients & Files (Available to both Master Admin & Worker Admins) */}
         <button
           type="button"
           onClick={() => onSelectTab("clients")}
@@ -102,6 +104,27 @@ export default function DashboardSidebar({
               <path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
             <span>Clients & Files</span>
+          </div>
+        </button>
+
+        {/* Services & Documentation (Available to both Master Admin & Worker Admins) */}
+        <button
+          type="button"
+          onClick={() => onSelectTab("services")}
+          className={`sidebar-menu-btn ${activeTab === "services" ? "active" : ""}`}
+        >
+          <div className="sidebar-menu-left">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 11l3 3L22 4" />
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+            </svg>
+            <span>Services & Docs</span>
           </div>
         </button>
 
@@ -183,6 +206,26 @@ export default function DashboardSidebar({
               {pendingWhatsAppCount}
             </span>
           )}
+        </button>
+
+        {/* Cloud & Infrastructure Usage */}
+        <button
+          type="button"
+          onClick={() => onSelectTab("cloud_usage")}
+          className={`sidebar-menu-btn ${activeTab === "cloud_usage" ? "active" : ""}`}
+        >
+          <div className="sidebar-menu-left">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+            </svg>
+            <span>Cloud & Usage</span>
+          </div>
         </button>
       </nav>
 

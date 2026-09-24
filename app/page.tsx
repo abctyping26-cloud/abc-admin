@@ -32,9 +32,11 @@ function getServerSnapshot(): string | null {
 const VALID_TABS: SidebarTab[] = [
   "overview",
   "clients",
+  "services",
   "worker_admins",
   "enquiries",
   "whatsapp_enquiries",
+  "cloud_usage",
 ];
 
 function isValidTab(tab: unknown): tab is SidebarTab {
