@@ -7,6 +7,7 @@ import ClientsManager from "./ClientsManager";
 import ServicesManager from "./ServicesManager";
 import WhatsAppEnquiriesManager from "./WhatsAppEnquiriesManager";
 import CloudUsageSection from "./CloudUsageSection";
+import AccountingSection from "./AccountingSection";
 import { API_BASE_URL } from "../config/api";
 
 export interface WorkerAdminUser {
@@ -2867,6 +2868,13 @@ export default function DashboardContent({
             </form>
           </div>
         </div>
+      )}
+
+      {/* -------------------------------------------------------------
+          TAB: ACCOUNTING (Workspace & Empty Canvas)
+          ------------------------------------------------------------- */}
+      {activeTab === "accounting" && (
+        <AccountingSection />
       )}
 
       {/* -------------------------------------------------------------

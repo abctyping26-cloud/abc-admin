@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 
 export type SidebarTab =
@@ -10,11 +10,16 @@ export type SidebarTab =
   | "whatsapp_enquiries"
   | "clients"
   | "services"
+  | "accounting"
   | "cloud_usage";
+
+export type AdminProject = "abc_typing" | "abc_neon";
 
 interface DashboardSidebarProps {
   activeTab: SidebarTab;
   onSelectTab: (tab: SidebarTab) => void;
+  selectedProject: AdminProject;
+  onSelectProject: (project: AdminProject) => void;
   isMaster?: boolean;
   pendingEnquiriesCount?: number;
   pendingWhatsAppCount?: number;
@@ -25,12 +30,44 @@ interface DashboardSidebarProps {
 export default function DashboardSidebar({
   activeTab,
   onSelectTab,
+  selectedProject,
+  onSelectProject,
   isMaster = true,
   pendingEnquiriesCount = 0,
   pendingWhatsAppCount = 0,
   isExpanded = false,
   onCollapse,
 }: DashboardSidebarProps) {
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  const projectSelectorRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside or pressing Escape
+  useEffect(() => {
+    if (!isProjectDropdownOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        projectSelectorRef.current &&
+        !projectSelectorRef.current.contains(event.target as Node)
+      ) {
+        setIsProjectDropdownOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsProjectDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isProjectDropdownOpen]);
+
   return (
     <aside
       className={`dashboard-sidebar ${isExpanded ? "is-expanded" : ""}`}
@@ -60,7 +97,133 @@ export default function DashboardSidebar({
         </button>
       </div>
 
-      <nav className="sidebar-nav">
+      {/* Project Switcher Dropdown at Top */}
+      <div className="sidebar-project-selector" ref={projectSelectorRef}>
+        <div className="sidebar-project-label">Project</div>
+        <div className="sidebar-project-dropdown-wrapper">
+          <button
+            type="button"
+            className="sidebar-project-trigger"
+            onClick={() => setIsProjectDropdownOpen((prev) => !prev)}
+            aria-expanded={isProjectDropdownOpen}
+            aria-haspopup="listbox"
+            title={selectedProject === "abc_neon" ? "ABC Neon" : "ABC Typing"}
+          >
+            <div className="sidebar-project-trigger-left">
+              <span
+                className={`sidebar-project-avatar ${
+                  selectedProject === "abc_neon" ? "avatar-neon" : "avatar-typing"
+                }`}
+                aria-hidden="true"
+              >
+                {selectedProject === "abc_neon" ? "N" : "T"}
+              </span>
+              <div className="sidebar-project-text-group">
+                <span className="sidebar-project-name">
+                  {selectedProject === "abc_neon" ? "ABC Neon" : "ABC Typing"}
+                </span>
+                <span className="sidebar-project-sub">
+                  {selectedProject === "abc_neon" ? "Neon Settings" : "Typing"}
+                </span>
+              </div>
+            </div>
+            <svg
+              className={`sidebar-project-chevron ${isProjectDropdownOpen ? "open" : ""}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+
+          {isProjectDropdownOpen && (
+            <div className="sidebar-project-menu" role="listbox">
+              <button
+                type="button"
+                role="option"
+                aria-selected={selectedProject === "abc_typing"}
+                className={`sidebar-project-menu-item ${
+                  selectedProject === "abc_typing" ? "active" : ""
+                }`}
+                onClick={() => {
+                  onSelectProject("abc_typing");
+                  setIsProjectDropdownOpen(false);
+                }}
+              >
+                <div className="sidebar-project-menu-item-left">
+                  <span className="sidebar-project-avatar avatar-typing" aria-hidden="true">
+                    T
+                  </span>
+                  <div className="sidebar-project-menu-item-text">
+                    <span className="sidebar-project-menu-item-title">ABC Typing</span>
+                    <span className="sidebar-project-menu-item-desc">Typing services & CRM</span>
+                  </div>
+                </div>
+                {selectedProject === "abc_typing" && (
+                  <svg
+                    className="sidebar-project-check"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </button>
+
+              <button
+                type="button"
+                role="option"
+                aria-selected={selectedProject === "abc_neon"}
+                className={`sidebar-project-menu-item ${
+                  selectedProject === "abc_neon" ? "active" : ""
+                }`}
+                onClick={() => {
+                  onSelectProject("abc_neon");
+                  setIsProjectDropdownOpen(false);
+                }}
+              >
+                <div className="sidebar-project-menu-item-left">
+                  <span className="sidebar-project-avatar avatar-neon" aria-hidden="true">
+                    N
+                  </span>
+                  <div className="sidebar-project-menu-item-text">
+                    <span className="sidebar-project-menu-item-title">ABC Neon</span>
+                    <span className="sidebar-project-menu-item-desc">Neon settings</span>
+                  </div>
+                </div>
+                {selectedProject === "abc_neon" && (
+                  <svg
+                    className="sidebar-project-check"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {selectedProject === "abc_typing" ? (
+        <>
+          <nav className="sidebar-nav">
         {/* Overview */}
         <button
           type="button"
@@ -208,6 +371,35 @@ export default function DashboardSidebar({
           )}
         </button>
 
+        {/* Accounting */}
+        <button
+          type="button"
+          onClick={() => onSelectTab("accounting")}
+          className={`sidebar-menu-btn ${activeTab === "accounting" ? "active" : ""}`}
+        >
+          <div className="sidebar-menu-left">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect width="16" height="20" x="4" y="2" rx="2" />
+              <line x1="8" x2="16" y1="6" y2="6" />
+              <line x1="16" x2="16" y1="14" />
+              <path d="M16 10h.01" />
+              <path d="M12 10h.01" />
+              <path d="M8 10h.01" />
+              <path d="M12 14h.01" />
+              <path d="M8 14h.01" />
+              <path d="M12 18h.01" />
+              <path d="M8 18h.01" />
+            </svg>
+            <span>Accounting</span>
+          </div>
+        </button>
+
         {/* Cloud & Infrastructure Usage */}
         <button
           type="button"
@@ -229,21 +421,25 @@ export default function DashboardSidebar({
         </button>
       </nav>
 
-      {/* Centered abc logo at bottom of expanded sidebar */}
-      <div className="sidebar-bottom-logo">
-        <Link
-          href={isMaster ? "/?tab=overview" : "/?tab=enquiries"}
-          onClick={(e) => {
-            e.preventDefault();
-            onSelectTab(isMaster ? "overview" : "enquiries");
-          }}
-          className="sidebar-logo-link"
-          aria-label="ABC Typing Admin Homepage"
-        >
-          <span className="sidebar-logo-text">abc</span>
-          <span className="sidebar-logo-dot" aria-hidden="true" />
-        </Link>
-      </div>
+          {/* Centered abc logo at bottom of expanded sidebar */}
+          <div className="sidebar-bottom-logo">
+            <Link
+              href={isMaster ? "/?tab=overview" : "/?tab=enquiries"}
+              onClick={(e) => {
+                e.preventDefault();
+                onSelectTab(isMaster ? "overview" : "enquiries");
+              }}
+              className="sidebar-logo-link"
+              aria-label="ABC Typing Admin Homepage"
+            >
+              <span className="sidebar-logo-text">abc</span>
+              <span className="sidebar-logo-dot" aria-hidden="true" />
+            </Link>
+          </div>
+        </>
+      ) : (
+        <div className="sidebar-empty-neon" />
+      )}
     </aside>
   );
 }

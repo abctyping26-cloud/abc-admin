@@ -3,10 +3,28 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardHeader from "./components/DashboardHeader";
-import DashboardSidebar, { type SidebarTab } from "./components/DashboardSidebar";
+import DashboardSidebar, { type SidebarTab, type AdminProject } from "./components/DashboardSidebar";
 import DashboardContent from "./components/DashboardContent";
 import { useInactivityTimeout } from "./hooks/useInactivityTimeout";
 import { API_BASE_URL } from "./config/api";
+
+function resolveInitialProject(): AdminProject {
+  if (typeof window === "undefined") return "abc_typing";
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const projParam = params.get("project");
+    if (projParam === "abc_neon" || projParam === "abc_typing") {
+      return projParam;
+    }
+    const saved = localStorage.getItem("abc_admin_project");
+    if (saved === "abc_neon" || saved === "abc_typing") {
+      return saved;
+    }
+  } catch {
+    // fallback
+  }
+  return "abc_typing";
+}
 
 function subscribe(callback: () => void) {
   window.addEventListener("storage", callback);
@@ -36,6 +54,7 @@ const VALID_TABS: SidebarTab[] = [
   "worker_admins",
   "enquiries",
   "whatsapp_enquiries",
+  "accounting",
   "cloud_usage",
 ];
 
@@ -93,6 +112,7 @@ export default function Home() {
   );
 
   const [activeTab, setActiveTab] = useState<SidebarTab>(() => resolveInitialTab());
+  const [selectedProject, setSelectedProject] = useState<AdminProject>(() => resolveInitialProject());
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [pendingEnquiriesCount, setPendingEnquiriesCount] = useState<number>(0);
   const [pendingWhatsAppCount, setPendingWhatsAppCount] = useState<number>(0);
@@ -156,11 +176,27 @@ export default function Home() {
     [isMaster]
   );
 
+  const handleProjectChange = React.useCallback((project: AdminProject) => {
+    setSelectedProject(project);
+    setIsSidebarExpanded(false);
+
+    try {
+      localStorage.setItem("abc_admin_project", project);
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("project", project);
+        window.history.replaceState(null, "", url.toString());
+      }
+    } catch {
+      // Ignore storage/history errors
+    }
+  }, []);
+
   // Guard against worker admin landing on master-only worker_admins tab
   useEffect(() => {
     if (!user) return;
     if (!isMaster && activeTab === "worker_admins") {
-      handleTabChange("enquiries");
+      queueMicrotask(() => handleTabChange("enquiries"));
     }
   }, [user, isMaster, activeTab, handleTabChange]);
 
@@ -184,6 +220,10 @@ export default function Home() {
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get("tab");
+      const projectParam = params.get("project");
+      if (projectParam === "abc_neon" || projectParam === "abc_typing") {
+        setSelectedProject(projectParam);
+      }
       if (isValidTab(tabParam)) {
         const targetTab = !isMaster && tabParam === "worker_admins" ? "enquiries" : tabParam;
         setActiveTab(targetTab);
@@ -232,7 +272,13 @@ export default function Home() {
   }
 
   return (
-    <div className={`dashboard-wrapper ${activeTab === "whatsapp_enquiries" ? "dashboard-wrapper-fixed" : ""}`}>
+    <div
+      className={`dashboard-wrapper ${
+        activeTab === "whatsapp_enquiries" && selectedProject === "abc_typing"
+          ? "dashboard-wrapper-fixed"
+          : ""
+      }`}
+    >
       <DashboardHeader
         user={user}
         onLogout={handleSignOut}
@@ -240,10 +286,18 @@ export default function Home() {
         isSidebarExpanded={isSidebarExpanded}
         onSelectTab={handleTabChange}
       />
-      <div className={`dashboard-body ${activeTab === "whatsapp_enquiries" ? "dashboard-body-fixed" : ""}`}>
+      <div
+        className={`dashboard-body ${
+          activeTab === "whatsapp_enquiries" && selectedProject === "abc_typing"
+            ? "dashboard-body-fixed"
+            : ""
+        }`}
+      >
         <DashboardSidebar
           activeTab={activeTab}
           onSelectTab={handleTabChange}
+          selectedProject={selectedProject}
+          onSelectProject={handleProjectChange}
           isMaster={isMaster}
           pendingEnquiriesCount={pendingEnquiriesCount}
           pendingWhatsAppCount={pendingWhatsAppCount}
@@ -257,13 +311,20 @@ export default function Home() {
             aria-hidden="true"
           />
         )}
-        <DashboardContent
-          activeTab={activeTab}
-          onNavigateTab={handleTabChange}
-          user={user}
-          onPendingCountChange={setPendingEnquiriesCount}
-          onPendingWhatsAppCountChange={setPendingWhatsAppCount}
-        />
+        {selectedProject === "abc_typing" ? (
+          <DashboardContent
+            activeTab={activeTab}
+            onNavigateTab={handleTabChange}
+            user={user}
+            onPendingCountChange={setPendingEnquiriesCount}
+            onPendingWhatsAppCountChange={setPendingWhatsAppCount}
+          />
+        ) : (
+          <main
+            className="dashboard-main dashboard-content-empty"
+            aria-label="ABC Neon Settings Empty View"
+          />
+        )}
       </div>
     </div>
   );
