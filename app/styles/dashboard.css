@@ -6997,18 +6997,2894 @@
 }
 
 /* ==========================================================================
-   ACCOUNTING SECTION (CLEAN EMPTY WORKSPACE)
+   ACCOUNTING SECTION (OFFICE RIBBON TOOLBAR & CUBE BUTTONS)
    ========================================================================== */
 
-.accounting-section {
+.accounting-manager-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   width: 100%;
-  animation: fadeIn 0.2s ease-in-out;
+}
+
+.accounting-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  min-height: 40px;
+}
+
+/* Top 4 Ribbon Cube Buttons */
+.accounting-top-cubes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accounting-cube-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 78px;
+  height: 64px;
+  padding: 6px 10px;
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2f6 100%);
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  user-select: none;
+}
+
+.accounting-cube-btn:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08);
+}
+
+.accounting-cube-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+/* Active Highlight State (Warm Golden Glow matching reference image) */
+.accounting-cube-btn.active {
+  background: linear-gradient(180deg, #fefce8 0%, #fef08a 100%);
+  border-color: #eab308;
+  box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.28), 0 2px 4px rgba(234, 179, 8, 0.15);
+}
+
+.cube-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+}
+
+.cube-label {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-top: 4px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.accounting-cube-btn.active .cube-label {
+  color: #854d0e;
+  font-weight: 700;
+}
+
+/* Main Workspace Layout (Canvas on Left, Dock on Right Edge) */
+.accounting-workspace-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  width: 100%;
+  position: relative;
+  min-height: calc(100vh - 160px);
+}
+
+.accounting-main-canvas {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
 }
 
 .accounting-empty-space {
   width: 100%;
-  min-height: calc(100vh - 180px);
+  min-height: calc(100vh - 160px);
 }
+
+/* Ubuntu-Style Right Edge Dock */
+.accounting-right-dock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 88px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 8px;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06);
+  position: sticky;
+  top: 16px;
+  z-index: 10;
+}
+
+.dock-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  width: 100%;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.dock-header-title {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dock-items-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.dock-action-cube {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 64px;
+  padding: 6px 4px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.dock-action-cube:hover {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  transform: translateX(-2px);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.dock-action-cube:active {
+  transform: translateX(0);
+}
+
+.dock-action-cube.active {
+  background-color: #eff6ff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Ubuntu-style active indicator pip on the right edge */
+.dock-active-pip {
+  display: none;
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #ea580c;
+  box-shadow: 0 0 4px rgba(234, 88, 12, 0.5);
+}
+
+.dock-action-cube.active .dock-active-pip {
+  display: block;
+}
+
+.dock-cube-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+}
+
+.dock-cube-label {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #334155;
+  margin-top: 3px;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.dock-action-cube.active .dock-cube-label {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+/* Responsive Stacking */
+@media (max-width: 768px) {
+  .accounting-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .accounting-top-cubes {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .accounting-cube-btn {
+    min-width: 68px;
+    height: 58px;
+    padding: 4px 8px;
+  }
+
+  .accounting-workspace-layout {
+    flex-direction: column-reverse;
+    gap: 12px;
+  }
+
+  .accounting-right-dock {
+    width: 100%;
+    position: static;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 8px 12px;
+  }
+
+  .dock-header {
+    display: none;
+  }
+
+  .dock-items-wrapper {
+    flex-direction: row;
+    justify-content: space-around;
+    width: 100%;
+  }
+
+  .dock-action-cube {
+    width: 68px;
+    height: 58px;
+  }
+
+  .dock-active-pip {
+    right: 50%;
+    bottom: -4px;
+    top: auto;
+    transform: translateX(50%);
+    width: 16px;
+    height: 3px;
+  }
+}
+
+/* ==========================================================================
+   CLASSIC ERP INVOICE VIEW COMPONENT
+   ========================================================================== */
+
+.erp-invoice-window {
+  width: 100%;
+  background-color: #ebf0f5;
+  border: 1px solid #1e40af;
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  overflow: hidden;
+  color: #1e293b;
+}
+
+/* Window Titlebar */
+.erp-window-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+  color: #ffffff;
+  padding: 4px 10px;
+  height: 28px;
+  user-select: none;
+}
+
+.erp-window-title-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.erp-window-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.erp-win-btn {
+  width: 22px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  border-radius: 2px;
+  cursor: default;
+}
+
+.erp-win-btn.close:hover {
+  background: #dc2626;
+}
+
+/* Window Body */
+.erp-window-body {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-x: auto;
+}
+
+/* Fieldset & Legends */
+.erp-fieldset {
+  border: 1px solid #94a3b8;
+  border-radius: 3px;
+  background-color: #f1f5f9;
+  padding: 10px 12px;
+  position: relative;
+  min-width: 0;
+}
+
+.erp-legend {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #b91c1c;
+  padding: 0 6px;
+  margin-left: 6px;
+}
+
+/* Form Grid & Rows */
+.erp-top-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 992px) {
+  .erp-top-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.erp-sales-fieldset {
+  margin: 0;
+}
+
+.erp-meta-container {
+  border: 1px solid #94a3b8;
+  border-radius: 3px;
+  background-color: #f1f5f9;
+  padding: 10px 12px;
+}
+
+.erp-form-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.erp-form-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+}
+
+.erp-label {
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: #1e293b;
+  min-width: 78px;
+  flex-shrink: 0;
+}
+
+.erp-label.required {
+  font-weight: 600;
+}
+
+.erp-label-sm {
+  font-size: 0.74rem;
+  color: #1e293b;
+  flex-shrink: 0;
+}
+
+.erp-recent-invoice-text {
+  font-size: 0.75rem;
+  color: #334155;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.erp-user-indicator-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.erp-user-label {
+  color: #15803d;
+}
+
+.erp-user-val {
+  color: #15803d;
+}
+
+/* Inputs & Selects */
+.erp-input,
+.erp-select {
+  height: 22px;
+  padding: 1px 4px;
+  font-size: 0.76rem;
+  font-family: inherit;
+  border: 1px solid #94a3b8;
+  background-color: #ffffff;
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+.erp-input:focus,
+.erp-select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+.erp-input-with-tools {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+}
+
+.erp-icon-btn {
+  height: 20px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid #94a3b8;
+  border-radius: 2px;
+  cursor: pointer;
+  background: #e2e8f0;
+}
+
+.erp-btn-orange {
+  background: #ea580c;
+  color: #ffffff;
+  border-color: #c2410c;
+}
+
+.erp-btn-binoculars {
+  background: #64748b;
+  color: #ffffff;
+  border-color: #475569;
+}
+
+.erp-highlight-select {
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+/* Width Helpers */
+.erp-w-60 { width: 60px; }
+.erp-w-80 { width: 80px; }
+.erp-w-90 { width: 90px; }
+.erp-w-100 { width: 100px; }
+.erp-w-110 { width: 110px; }
+.erp-w-130 { width: 130px; }
+.erp-w-140 { width: 140px; }
+.erp-w-160 { width: 160px; }
+.erp-w-180 { width: 180px; }
+.erp-w-200 { width: 200px; }
+.erp-w-220 { width: 220px; }
+.erp-flex-1 { flex: 1; min-width: 0; }
+.erp-mt-8 { margin-top: 8px; }
+
+/* Special Background Colors matching image */
+.erp-bg-yellow {
+  background-color: #fef08a !important;
+  border-color: #eab308 !important;
+}
+
+.erp-bg-cyan {
+  background-color: #cffafe !important;
+  border-color: #06b6d4 !important;
+}
+
+.erp-bg-lightgreen {
+  background-color: #bbf7d0 !important;
+  border-color: #22c55e !important;
+}
+
+.erp-bg-pink {
+  background-color: #fca5a5 !important;
+  border-color: #ef4444 !important;
+}
+
+.erp-bg-purple {
+  background-color: #ddd6fe !important;
+  border-color: #8b5cf6 !important;
+}
+
+/* Details Section */
+.erp-details-top-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.erp-inline-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.erp-micro-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #475569;
+}
+
+.erp-details-mid-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  font-size: 0.74rem;
+}
+
+.erp-inline-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.erp-mini-tag {
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.erp-mini-subtag {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-left: 2px;
+}
+
+.erp-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.74rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Line Items Table & Side Buttons */
+.erp-table-with-actions {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.erp-table-scroll-wrap {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  border: 1px solid #94a3b8;
+  background-color: #ffffff;
+  min-height: 110px;
+  max-height: 190px;
+}
+
+.erp-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.erp-data-table th {
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+  border: 1px solid #cbd5e1;
+  padding: 4px 6px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  color: #0f172a;
+}
+
+.erp-data-table th.erp-th-blue {
+  background: #1d4ed8;
+  color: #ffffff;
+  border-color: #1e40af;
+}
+
+.erp-data-table td {
+  border: 1px solid #e2e8f0;
+  padding: 3px 6px;
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+
+.erp-data-table tr.selected-row {
+  background-color: #dbeafe;
+}
+
+.erp-table-empty-td {
+  padding: 32px 16px;
+  text-align: center;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.erp-table-side-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 86px;
+  flex-shrink: 0;
+}
+
+.erp-side-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 28px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  background: linear-gradient(180deg, #f8fafc 0%, #cbd5e1 100%);
+  border: 1px solid #94a3b8;
+  border-radius: 3px;
+  cursor: pointer;
+  user-select: none;
+  color: #1e293b;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.erp-side-btn:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #e2e8f0 100%);
+  border-color: #64748b;
+}
+
+.erp-btn-add .btn-icon { color: #ea580c; font-weight: 900; }
+.erp-btn-remove .btn-icon { color: #dc2626; font-weight: 900; }
+.erp-btn-change .btn-icon { color: #2563eb; }
+
+/* Payment Details Grid */
+.erp-payment-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 1050px) {
+  .erp-payment-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.erp-notes-container {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.erp-notes-box-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  background: linear-gradient(180deg, #fefce8 0%, #fef08a 100%);
+  border: 1px solid #eab308;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.erp-notes-box-btn:hover {
+  background: #fef08a;
+}
+
+.notes-text {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #854d0e;
+  margin-top: 2px;
+}
+
+.erp-pay-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.erp-pay-center-col,
+.erp-pay-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.erp-cost-row,
+.erp-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.74rem;
+}
+
+.erp-cost-label,
+.erp-summary-label {
+  font-size: 0.74rem;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+/* Footer Command Bar */
+.erp-footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(180deg, #f1f5f9 0%, #cbd5e1 100%);
+  border: 1px solid #94a3b8;
+  border-radius: 3px;
+  padding: 4px 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.erp-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.erp-footer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  height: 25px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  border: 1px solid #94a3b8;
+  border-radius: 3px;
+  cursor: pointer;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  user-select: none;
+}
+
+.erp-footer-btn:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #e2e8f0 100%);
+  border-color: #64748b;
+  transform: translateY(-1px);
+}
+
+.erp-footer-btn:active {
+  transform: translateY(0);
+}
+
+.erp-footer-right {
+  display: flex;
+  align-items: center;
+}
+
+/* ==========================================================================
+   ERP CUSTOMER DATABASE SEARCH POPOVER & QUICK ADD
+   ========================================================================== */
+
+.erp-customer-row {
+  position: relative;
+}
+
+.erp-customer-box-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 24px;
+  background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border: 1px solid #1e40af;
+  border-radius: 2px;
+  padding: 0 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.76rem;
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: filter 0.15s ease;
+}
+
+.erp-customer-box-trigger:hover {
+  filter: brightness(1.08);
+}
+
+.erp-customer-box-trigger:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.erp-customer-display {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.erp-customer-display.placeholder {
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+.erp-customer-display.has-val {
+  color: #ffffff;
+  font-weight: 700;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+}
+
+.erp-select-arrow {
+  font-size: 0.7rem;
+  margin-left: 6px;
+  opacity: 0.85;
+}
+
+/* Popover Container */
+.erp-customer-search-popover {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  width: 100%;
+  min-width: 580px;
+  max-width: 720px;
+  background: #ffffff;
+  border: 2px solid #2563eb;
+  border-radius: 4px;
+  box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.22), 0 4px 10px rgba(0, 0, 0, 0.1);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.15s ease-out;
+}
+
+@media (max-width: 768px) {
+  .erp-customer-search-popover {
+    min-width: 100%;
+    left: 0;
+    right: 0;
+  }
+}
+
+/* Header */
+.erp-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(180deg, #1e40af 0%, #1e3a8a 100%);
+  color: #ffffff;
+  padding: 5px 10px;
+  height: 28px;
+  user-select: none;
+}
+
+.erp-popover-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.erp-badge-count {
+  background: #3b82f6;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  margin-left: 4px;
+}
+
+.erp-popover-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.erp-mini-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.erp-mini-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.erp-popover-close-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.erp-popover-close-btn:hover {
+  opacity: 1;
+  color: #fca5a5;
+}
+
+/* Toolbar */
+.erp-popover-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #cbd5e1;
+}
+
+.erp-popover-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.erp-popover-search-box svg {
+  position: absolute;
+  left: 7px;
+  pointer-events: none;
+}
+
+.erp-popover-search-input {
+  width: 100%;
+  height: 25px;
+  padding-left: 26px;
+  padding-right: 22px;
+  font-size: 0.76rem;
+  font-family: inherit;
+  border: 1px solid #94a3b8;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.erp-popover-search-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+.erp-search-clear-btn {
+  position: absolute;
+  right: 6px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.erp-search-clear-btn:hover {
+  color: #ef4444;
+}
+
+.erp-popover-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.erp-chip-btn {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.erp-chip-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.erp-chip-btn.walkin {
+  background: #fef08a;
+  border-color: #ca8a04;
+  color: #854d0e;
+}
+
+.erp-chip-btn.walkin:hover {
+  background: #fde047;
+}
+
+.erp-chip-btn.active {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
+/* Quick Add Form */
+.erp-quick-add-client-panel {
+  padding: 8px 10px;
+  background: #eff6ff;
+  border-bottom: 1px solid #bfdbfe;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.erp-quick-add-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.erp-quick-add-error {
+  font-size: 0.72rem;
+  color: #dc2626;
+  background: #fee2e2;
+  padding: 3px 6px;
+  border-radius: 2px;
+}
+
+.erp-quick-add-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.erp-quick-add-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.erp-btn-save-client {
+  background: #16a34a;
+  color: #ffffff;
+  border: 1px solid #15803d;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.erp-btn-save-client:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.erp-btn-save-client:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.erp-btn-cancel-client {
+  background: #ffffff;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+/* Results Table Scroll */
+.erp-popover-results-scroll {
+  max-height: 240px;
+  overflow-y: auto;
+  background: #ffffff;
+}
+
+.erp-customer-search-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.74rem;
+  font-family: inherit;
+}
+
+.erp-customer-search-table thead th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid #cbd5e1;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  z-index: 2;
+}
+
+.erp-customer-row-item {
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.erp-customer-row-item:hover {
+  background-color: #dbeafe !important;
+}
+
+.erp-customer-row-item.selected {
+  background-color: #eff6ff;
+}
+
+.erp-customer-row-item td {
+  padding: 4px 8px;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.erp-code-cell {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 700;
+  color: #2563eb;
+  font-size: 0.72rem;
+}
+
+.erp-name-cell strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.erp-phone-cell {
+  font-family: ui-monospace, monospace;
+  color: #166534;
+}
+
+.erp-email-cell {
+  color: #64748b;
+  font-size: 0.7rem;
+}
+
+.erp-address-cell {
+  color: #64748b;
+  font-size: 0.7rem;
+}
+
+.erp-select-badge-btn {
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.erp-select-badge-btn:hover {
+  background: #1d4ed8;
+}
+
+/* Loading & Empty States */
+.erp-popover-loading,
+.erp-popover-empty,
+.erp-popover-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  text-align: center;
+  gap: 8px;
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+.erp-popover-error {
+  color: #dc2626;
+}
+
+.erp-popover-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.erp-popover-footer-note {
+  font-size: 0.68rem;
+  color: #059669;
+  font-weight: 500;
+}
+
+.erp-popover-footer-close {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.erp-popover-footer-close:hover {
+  background: #e2e8f0;
+}
+
+/* ==========================================================================
+   Worker Admins Sub-Navigation (Admins vs Salesmen/Personnel)
+   ========================================================================== */
+.worker-admin-subtabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 10px;
+  width: fit-content;
+  margin-bottom: 20px;
+}
+
+.worker-admin-subtab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.worker-admin-subtab-btn:hover {
+  color: #0f172a;
+}
+
+.worker-admin-subtab-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   Mini Quick-Add Popover in ERP Invoice Form
+   ========================================================================== */
+.erp-rel-anchor {
+  position: relative;
+}
+
+.erp-date-time-row {
+  align-items: center;
+}
+
+.erp-date-time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.erp-meta-sublabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #475569;
+  margin-left: 4px;
+}
+
+.erp-w-130 {
+  width: 130px !important;
+}
+
+.erp-w-90 {
+  width: 90px !important;
+}
+
+.erp-mini-quick-popover {
+  position: absolute;
+  top: 100%;
+  left: 100px;
+  margin-top: 4px;
+  width: 260px;
+  background: #ffffff;
+  border: 1px solid #94a3b8;
+  border-radius: 4px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+  z-index: 50;
+  padding: 0;
+  animation: fadeIn 0.12s ease-out;
+}
+
+.erp-mini-quick-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 0.74rem;
+  font-weight: 700;
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+}
+
+.erp-mini-quick-header button {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.erp-mini-quick-header button:hover {
+  color: #ffffff;
+}
+
+.erp-mini-quick-body {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #f8fafc;
+}
+
+.erp-mini-quick-body input.erp-input {
+  width: 100%;
+  font-size: 0.75rem;
+  height: 24px;
+}
+
+.erp-mini-quick-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.erp-btn-save-mini {
+  background: #16a34a;
+  color: #ffffff;
+  border: 1px solid #15803d;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.erp-btn-save-mini:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.erp-btn-save-mini:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.erp-btn-cancel-mini {
+  background: #ffffff;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   Accounting Personnel Manager (Salesmen, Referrers, Divisions)
+   ========================================================================== */
+.personnel-manager-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.18s ease-out;
+}
+
+.personnel-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.personnel-filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.personnel-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.personnel-chip:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.personnel-chip.active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+
+.personnel-chip .chip-badge {
+  background: rgba(0, 0, 0, 0.08);
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 9999px;
+}
+
+.personnel-chip.active .chip-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.personnel-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.personnel-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.personnel-search-icon {
+  position: absolute;
+  left: 10px;
+  width: 14px;
+  height: 14px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.personnel-search-input {
+  padding: 7px 28px 7px 32px;
+  font-size: 0.82rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  background: #ffffff;
+  color: #0f172a;
+  width: 220px;
+  transition: border-color 0.15s ease, width 0.2s ease;
+}
+
+.personnel-search-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  width: 260px;
+}
+
+.personnel-search-clear {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.personnel-search-clear:hover {
+  color: #0f172a;
+}
+
+.personnel-role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+}
+
+.badge-salesman {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.badge-referrer {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.badge-division {
+  background: #faf5ff;
+  color: #7e22ce;
+  border: 1px solid #e9d5ff;
+}
+
+.personnel-phone-text {
+  font-family: ui-monospace, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8rem;
+  color: #0f172a;
+}
+
+.personnel-code-text {
+  font-family: ui-monospace, Menlo, Monaco, Consolas, monospace;
+  font-weight: 700;
+  font-size: 0.78rem;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #334155;
+}
+
+.personnel-delete-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.personnel-delete-btn:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.personnel-delete-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.personnel-create-modal {
+  max-width: 440px !important;
+}
+
+.personnel-modal-error {
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  margin-bottom: 12px;
+}
+
+/* ==========================================================================
+   Supplier Badge & Styling
+   ========================================================================== */
+.badge-supplier {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+/* ==========================================================================
+   Details Hybrid Service Selector
+   ========================================================================== */
+.erp-service-inputs-combo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.erp-service-picker-select {
+  max-width: 240px;
+  background-color: #f1f5f9;
+  font-weight: 600;
+  color: #1e40af;
+  border-color: #cbd5e1;
+}
+
+.erp-service-picker-select:hover {
+  background-color: #e2e8f0;
+}
+
+.erp-w-160 {
+  width: 160px !important;
+}
+
+/* ==========================================================================
+   Bank Management (Finance Section)
+   ========================================================================== */
+.bank-manager-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.18s ease-out;
+  padding: 8px 4px;
+}
+
+.bank-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.bank-header-subtitle {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.bank-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.bank-stats-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.bank-stats-chip strong {
+  color: #0f172a;
+}
+
+.bank-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.bank-search-input {
+  padding: 7px 28px 7px 32px;
+  font-size: 0.82rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  background: #ffffff;
+  color: #0f172a;
+  width: 260px;
+  transition: border-color 0.15s ease, width 0.2s ease;
+}
+
+.bank-search-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  width: 300px;
+}
+
+.bank-search-clear {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.bank-search-clear:hover {
+  color: #0f172a;
+}
+
+.bank-table-container {
+  overflow-x: auto;
+}
+
+.bank-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bank-icon-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.bank-name-text {
+  font-size: 0.88rem;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.bank-holder-text {
+  font-size: 0.82rem;
+  color: #334155;
+  font-weight: 500;
+}
+
+.bank-mono-text {
+  font-family: ui-monospace, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  color: #0f172a;
+}
+
+.bank-iban-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bank-swift-text {
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.bank-balance-tag {
+  display: inline-block;
+  font-family: ui-monospace, Menlo, monospace;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: #166534;
+  background: #f0fdf4;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid #bbf7d0;
+}
+
+.bank-create-modal {
+  max-width: 480px !important;
+}
+
+.bank-modal-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ==========================================================================
+   INVOICE NOTIFICATION BANNER
+   ========================================================================== */
+.erp-invoice-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 12px;
+  animation: fadeInDown 0.2s ease-out;
+}
+
+.erp-invoice-banner.success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+}
+
+.erp-invoice-banner.error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+}
+
+.erp-banner-dismiss {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.erp-banner-dismiss:hover {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   INVOICES LEDGER UNDER INVOICE BOX
+   ========================================================================== */
+.erp-ledger-card {
+  margin-top: 24px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.erp-ledger-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.erp-ledger-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.erp-ledger-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: #e0f2fe;
+  color: #0284c7;
+  border-radius: 6px;
+}
+
+.erp-ledger-title {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.erp-ledger-subtitle {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 2px 0 0;
+}
+
+.erp-ledger-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.erp-ledger-search-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 4px 10px;
+  width: 280px;
+  color: #64748b;
+  transition: border-color 0.15s ease;
+}
+
+.erp-ledger-search-box:focus-within {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.erp-ledger-search-input {
+  border: none;
+  outline: none;
+  font-size: 0.82rem;
+  color: #0f172a;
+  width: 100%;
+  background: transparent;
+}
+
+.erp-search-clear-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0 4px;
+}
+
+.erp-ledger-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.erp-ledger-refresh-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.erp-ledger-table-wrapper {
+  overflow-x: auto;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.erp-ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+.erp-ledger-table thead {
+  background: #f1f5f9;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.erp-ledger-table th {
+  padding: 10px 14px;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid #cbd5e1;
+  white-space: nowrap;
+}
+
+.erp-ledger-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.erp-ledger-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.erp-ledger-empty-cell {
+  text-align: center;
+  padding: 36px !important;
+  color: #64748b;
+  font-size: 0.86rem;
+}
+
+.erp-inv-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  background: #f1f5f9;
+  color: #0f172a;
+  border-radius: 4px;
+  font-weight: 700;
+  border: 1px solid #cbd5e1;
+}
+
+.erp-more-items-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  font-size: 0.72rem;
+  background: #e2e8f0;
+  color: #475569;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.erp-status-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.erp-status-pill.status-paid {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.erp-status-pill.status-partial {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.erp-status-pill.status-unpaid {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.erp-ledger-actions-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.erp-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 0.88rem;
+  transition: all 0.15s ease;
+}
+
+.erp-mini-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
+.erp-mini-btn.print:hover {
+  background: #fef3c7;
+  border-color: #f59e0b;
+}
+
+.erp-mini-btn.load:hover {
+  background: #e0f2fe;
+  border-color: #0284c7;
+}
+
+.erp-mini-btn.delete:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+}
+
+/* ==========================================================================
+   PRINTABLE INVOICE MODAL & A4 PAPER VIEW
+   ========================================================================== */
+.printable-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.printable-modal-container {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 860px;
+  width: 100%;
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.printable-modal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #0f172a;
+  color: #ffffff;
+  border-bottom: 1px solid #334155;
+}
+
+.toolbar-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toolbar-title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.status-badge-capsule {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.status-badge-capsule.status-paid {
+  background: #22c55e;
+  color: #ffffff;
+}
+
+.status-badge-capsule.status-partial {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
+.status-badge-capsule.status-unpaid {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.print-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.print-action-btn.primary {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.print-action-btn.primary:hover {
+  background: #1d4ed8;
+}
+
+.print-action-btn.secondary {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+.print-action-btn.secondary:hover {
+  background: #475569;
+}
+
+/* Printable Paper Layout */
+.printable-paper {
+  padding: 32px 36px;
+  background: #ffffff;
+  overflow-y: auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #1e293b;
+}
+
+.paper-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.header-brand {
+  display: flex;
+  gap: 16px;
+  max-width: 500px;
+}
+
+.company-logo-text {
+  width: 52px;
+  height: 52px;
+  background: #0f172a;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.company-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px;
+  line-height: 1.3;
+}
+
+.company-tagline {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #2563eb;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.company-details {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.header-meta {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.tax-invoice-heading {
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.meta-table {
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  margin-left: auto;
+}
+
+.meta-table td {
+  padding: 2px 6px;
+}
+
+.meta-label {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.meta-value {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.paper-divider {
+  height: 2px;
+  background: #e2e8f0;
+  margin: 20px 0;
+}
+
+.paper-bill-to-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.bill-to-box, .service-details-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 0.82rem;
+}
+
+.bill-to-title {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #475569;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.bill-to-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.bill-to-company {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.bill-to-field {
+  color: #334155;
+  margin-bottom: 3px;
+  line-height: 1.4;
+}
+
+.paper-table-wrapper {
+  margin-bottom: 20px;
+}
+
+.paper-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.paper-table th {
+  background: #0f172a;
+  color: #ffffff;
+  padding: 8px 12px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.paper-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.paper-table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.paper-summary-section {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 24px;
+  margin-top: 10px;
+}
+
+.paper-payment-terms {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+  font-size: 0.76rem;
+  color: #475569;
+}
+
+.terms-heading {
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.terms-text {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.paper-totals-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.paper-total-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 6px;
+  font-size: 0.84rem;
+  color: #475569;
+}
+
+.paper-total-row.grand-total {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+  border-top: 2px solid #0f172a;
+  border-bottom: 1px solid #cbd5e1;
+  padding: 8px 6px;
+  margin-top: 4px;
+}
+
+.paper-total-row.balance-due {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #b91c1c;
+  background: #fef2f2;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-top: 4px;
+}
+
+.paper-total-row.text-red {
+  color: #dc2626;
+}
+
+.paper-signature-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  margin-top: 40px;
+  padding-top: 20px;
+}
+
+.signature-col {
+  text-align: center;
+}
+
+.signature-line {
+  border-bottom: 1px dashed #94a3b8;
+  margin-bottom: 8px;
+  height: 40px;
+}
+
+.signature-caption {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+/* Browser Print Optimization */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printable-paper,
+  .printable-paper * {
+    visibility: visible;
+  }
+  .printable-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+  .printable-modal-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    max-height: none !important;
+  }
+  .printable-paper {
+    padding: 0 !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   CLIENT & WORKER ADMIN INVOICE CARDS
+   ========================================================================== */
+.client-invoices-card {
+  margin-top: 20px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.client-invoices-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.client-invoices-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.client-invoices-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #eff6ff;
+  color: #2563eb;
+  border-radius: 8px;
+}
+
+.client-invoices-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.client-invoices-subtitle {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 2px 0 0;
+}
+
+.client-invoices-summary-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.client-stat-pill {
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 4px 10px;
+  min-width: 90px;
+  text-align: right;
+}
+
+.client-stat-pill.highlight {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.client-stat-pill .stat-label {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.client-stat-pill .stat-val {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.client-invoices-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 1rem;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.client-invoices-refresh-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.client-invoices-table-container {
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.client-invoices-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.client-invoices-table th {
+  background: #f8fafc;
+  padding: 10px 14px;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.client-invoices-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.client-invoices-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.client-invoice-print-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.client-invoice-print-btn:hover {
+  background: #f1f5f9;
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.client-invoices-loading,
+.client-invoices-empty {
+  text-align: center;
+  padding: 32px;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.empty-subtext {
+  display: block;
+  font-size: 0.76rem;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+/* ==========================================================================
+   WORKER ADMIN PROFILE & INVOICES MODAL
+   ========================================================================== */
+.worker-admin-clickable-row:hover {
+  background: #f8fafc !important;
+}
+
+.worker-admin-detail-modal {
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 900px;
+  width: 100%;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalScaleIn 0.2s ease-out;
+}
+
+.worker-admin-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.worker-header-profile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.worker-modal-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #0f172a;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
+}
+
+.worker-modal-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.worker-modal-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.worker-modal-email {
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.worker-role-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.worker-meta-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 14px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.worker-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.worker-meta-item .meta-label {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.worker-meta-item .meta-val {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.worker-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 16px 24px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.worker-stat-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.worker-stat-box.highlight {
+  border-color: #bfdbfe;
+  background: #f0f7ff;
+}
+
+.worker-stat-box.green {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.worker-stat-num {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.worker-stat-box.highlight .worker-stat-num {
+  color: #1d4ed8;
+}
+
+.worker-stat-box.green .worker-stat-num {
+  color: #15803d;
+}
+
+.worker-stat-desc {
+  font-size: 0.74rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.worker-invoices-section {
+  padding: 20px 24px;
+  overflow-y: auto;
+  max-height: 480px;
+}
+
+.worker-invoices-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+
 
 
 

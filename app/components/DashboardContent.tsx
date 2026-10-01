@@ -8,6 +8,8 @@ import ServicesManager from "./ServicesManager";
 import WhatsAppEnquiriesManager from "./WhatsAppEnquiriesManager";
 import CloudUsageSection from "./CloudUsageSection";
 import AccountingSection from "./AccountingSection";
+import PersonnelManager from "./PersonnelManager";
+import PrintableInvoiceModal, { PrintableInvoiceData } from "./PrintableInvoiceModal";
 import { API_BASE_URL } from "../config/api";
 
 export interface WorkerAdminUser {
@@ -231,6 +233,43 @@ export default function DashboardContent({
   );
   const [createError, setCreateError] = useState("");
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
+  const [workerAdminSubTab, setWorkerAdminSubTab] = useState<"admins" | "personnel">("admins");
+
+  // Worker Admin Detail & Handled Invoices state
+  const [selectedWorkerAdminForDetail, setSelectedWorkerAdminForDetail] = useState<WorkerAdminUser | null>(null);
+  const [workerInvoices, setWorkerInvoices] = useState<any[]>([]);
+  const [isLoadingWorkerInvoices, setIsLoadingWorkerInvoices] = useState(false);
+  const [activePrintInvoice, setActivePrintInvoice] = useState<PrintableInvoiceData | null>(null);
+
+  // Fetch invoices handled by a specific worker admin from MongoDB
+  const fetchWorkerInvoices = useCallback(async (admin: WorkerAdminUser) => {
+    setIsLoadingWorkerInvoices(true);
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("abc_admin_token") : null;
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      if (user?.id) headers["x-admin-id"] = user.id;
+
+      const employeeQuery = admin.name || admin.identifier;
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/admin/accounting/invoices?employee=${encodeURIComponent(employeeQuery)}`,
+        { headers }
+      );
+      if (res.ok) {
+        const json = await res.json();
+        setWorkerInvoices(json.data?.invoices || []);
+      }
+    } catch (err) {
+      console.error("Error fetching worker admin invoices:", err);
+    } finally {
+      setIsLoadingWorkerInvoices(false);
+    }
+  }, [user]);
+
+  const handleOpenWorkerAdminDetail = (admin: WorkerAdminUser) => {
+    setSelectedWorkerAdminForDetail(admin);
+    fetchWorkerInvoices(admin);
+  };
 
   // Client counts state for overview
   const [clientsCount, setClientsCount] = useState<number>(0);
@@ -2380,9 +2419,41 @@ export default function DashboardContent({
           ------------------------------------------------------------- */}
       {activeTab === "worker_admins" && isMaster && (
         <>
-          {/* Header Row: Title on Left, Capsule Button on Right */}
-          <div className="content-header-row">
-            <h1 className="content-title">Worker Admins</h1>
+          {/* Sub-tab navigation: Worker Admins vs Salesmen & Personnel */}
+          <div className="worker-admin-subtabs">
+            <button
+              type="button"
+              className={`worker-admin-subtab-btn ${workerAdminSubTab === "admins" ? "active" : ""}`}
+              onClick={() => setWorkerAdminSubTab("admins")}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+              <span>Admin Users</span>
+            </button>
+            <button
+              type="button"
+              className={`worker-admin-subtab-btn ${workerAdminSubTab === "personnel" ? "active" : ""}`}
+              onClick={() => setWorkerAdminSubTab("personnel")}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+              </svg>
+              <span>Salesmen & Personnel</span>
+            </button>
+          </div>
+
+          {workerAdminSubTab === "personnel" ? (
+            <PersonnelManager getAuthHeaders={getAdminAuthHeaders} />
+          ) : (
+            <>
+              {/* Header Row: Title on Left, Capsule Button on Right */}
+              <div className="content-header-row">
+                <h1 className="content-title">Worker Admins</h1>
 
             {isMaster && (
               <button
@@ -2469,8 +2540,13 @@ export default function DashboardContent({
                       : admin.identifier.slice(0, 1).toUpperCase();
 
                     return (
-                      <tr key={admin.id}>
-                        <td>
+                      <tr
+                        key={admin.id}
+                        onClick={() => handleOpenWorkerAdminDetail(admin)}
+                        style={{ cursor: "pointer" }}
+                        className="worker-admin-clickable-row"
+                      >
+                        <td onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             className="admin-checkbox"
@@ -2579,12 +2655,19 @@ export default function DashboardContent({
                             {admin.status === "active" ? "Active" : "Inactive"}
                           </span>
                         </td>
-                        <td style={{ textAlign: "right" }}>
+                        <td
+                          style={{ textAlign: "right" }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenWorkerAdminDetail(admin);
+                          }}
+                        >
                           <button
                             type="button"
                             className="table-arrow-btn"
-                            title="View admin details"
+                            title="View admin profile & handled invoices"
                             aria-label={`View ${admin.name || admin.identifier}`}
+                            onClick={() => handleOpenWorkerAdminDetail(admin)}
                           >
                             <svg
                               viewBox="0 0 24 24"
@@ -2764,6 +2847,21 @@ export default function DashboardContent({
                             </span>
                           </div>
                         </div>
+
+                        {/* Open Profile & Invoices Action */}
+                        <div style={{ marginTop: "12px", paddingTop: "10px", borderTop: "1px solid #f1f5f9" }}>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenWorkerAdminDetail(admin)}
+                            className="client-mobile-open-btn"
+                          >
+                            <span>View Profile & Invoices</span>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                              <polyline points="12 5 19 12 12 19" />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -2771,6 +2869,8 @@ export default function DashboardContent({
               })
             )}
           </div>
+            </>
+          )}
         </>
       )}
 
@@ -2874,7 +2974,7 @@ export default function DashboardContent({
           TAB: ACCOUNTING (Workspace & Empty Canvas)
           ------------------------------------------------------------- */}
       {activeTab === "accounting" && (
-        <AccountingSection />
+        <AccountingSection user={user} />
       )}
 
       {/* -------------------------------------------------------------
@@ -3229,6 +3329,277 @@ export default function DashboardContent({
             </form>
           </div>
         </div>
+      )}
+
+      {/* Modal: Worker Admin Profile & Handled Invoices */}
+      {selectedWorkerAdminForDetail && (
+        <div
+          className="admin-modal-backdrop"
+          onClick={() => setSelectedWorkerAdminForDetail(null)}
+        >
+          <div
+            className="worker-admin-detail-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="worker-admin-detail-header">
+              <div className="worker-header-profile">
+                <div className="worker-modal-avatar">
+                  {selectedWorkerAdminForDetail.name
+                    ? selectedWorkerAdminForDetail.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase()
+                    : selectedWorkerAdminForDetail.identifier.slice(0, 1).toUpperCase()}
+                </div>
+                <div>
+                  <h2 className="worker-modal-name">
+                    {selectedWorkerAdminForDetail.name || "Setup Pending"}
+                  </h2>
+                  <div className="worker-modal-sub">
+                    <span className="worker-modal-email">
+                      {selectedWorkerAdminForDetail.identifier}
+                    </span>
+                    <span className="worker-role-tag">
+                      {selectedWorkerAdminForDetail.role === "worker_admin"
+                        ? "Worker Admin"
+                        : "Admin"}
+                    </span>
+                    <span
+                      className={`status-pill ${
+                        selectedWorkerAdminForDetail.status === "active"
+                          ? "active"
+                          : "inactive"
+                      }`}
+                      style={{ fontSize: "0.72rem", padding: "2px 8px" }}
+                    >
+                      {selectedWorkerAdminForDetail.status === "active"
+                        ? "Active"
+                        : "Inactive"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="admin-modal-close"
+                onClick={() => setSelectedWorkerAdminForDetail(null)}
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Profile Info Bar */}
+            <div className="worker-meta-bar">
+              <div className="worker-meta-item">
+                <span className="meta-label">Phone</span>
+                <span className="meta-val">
+                  {selectedWorkerAdminForDetail.phone ||
+                    selectedWorkerAdminForDetail.phoneNumber ||
+                    "—"}
+                </span>
+              </div>
+              <div className="worker-meta-item">
+                <span className="meta-label">Location / Branch</span>
+                <span className="meta-val">
+                  {selectedWorkerAdminForDetail.location || "UAE Office"}
+                </span>
+              </div>
+              <div className="worker-meta-item">
+                <span className="meta-label">Last Login</span>
+                <span className="meta-val">
+                  {selectedWorkerAdminForDetail.lastLoginAt
+                    ? new Date(
+                        selectedWorkerAdminForDetail.lastLoginAt
+                      ).toLocaleString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                        hour12: true,
+                      })
+                    : "Never"}
+                </span>
+              </div>
+            </div>
+
+            {/* Invoices Statistics */}
+            <div className="worker-stats-row">
+              <div className="worker-stat-box">
+                <span className="worker-stat-num">{workerInvoices.length}</span>
+                <span className="worker-stat-desc">Invoices Handled</span>
+              </div>
+              <div className="worker-stat-box highlight">
+                <span className="worker-stat-num">
+                  AED{" "}
+                  {workerInvoices
+                    .reduce(
+                      (acc, inv) =>
+                        acc + Number(inv.financialSummary?.grossAmount || 0),
+                      0
+                    )
+                    .toFixed(2)}
+                </span>
+                <span className="worker-stat-desc">Gross Billing Volume</span>
+              </div>
+              <div className="worker-stat-box green">
+                <span className="worker-stat-num">
+                  AED{" "}
+                  {workerInvoices
+                    .reduce(
+                      (acc, inv) =>
+                        acc + Number(inv.financialSummary?.paid || 0),
+                      0
+                    )
+                    .toFixed(2)}
+                </span>
+                <span className="worker-stat-desc">Collections Received</span>
+              </div>
+            </div>
+
+            {/* Invoices List */}
+            <div className="worker-invoices-section">
+              <div className="worker-invoices-header">
+                <div>
+                  <h3 className="section-title">Invoices Handled by this Employee</h3>
+                  <p className="text-muted" style={{ fontSize: "0.8rem", margin: "2px 0 0" }}>
+                    Permanent accounting records from MongoDB matching this worker
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fetchWorkerInvoices(selectedWorkerAdminForDetail)}
+                  className="client-invoices-refresh-btn"
+                  title="Refresh Invoices from MongoDB"
+                >
+                  ↻
+                </button>
+              </div>
+
+              {isLoadingWorkerInvoices ? (
+                <div className="client-invoices-loading">
+                  Loading employee invoices from MongoDB...
+                </div>
+              ) : workerInvoices.length === 0 ? (
+                <div className="client-invoices-empty">
+                  <p>No invoices handled by this employee yet.</p>
+                  <span className="empty-subtext">
+                    Invoices where this employee is selected in line items will be displayed here automatically.
+                  </span>
+                </div>
+              ) : (
+                <div className="client-invoices-table-container">
+                  <table className="client-invoices-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: "90px" }}>Invoice #</th>
+                        <th style={{ width: "120px" }}>Date & Time</th>
+                        <th>Customer</th>
+                        <th>Services Handled</th>
+                        <th style={{ width: "110px", textAlign: "right" }}>Gross (AED)</th>
+                        <th style={{ width: "100px", textAlign: "right" }}>Paid (AED)</th>
+                        <th style={{ width: "85px", textAlign: "center" }}>Status</th>
+                        <th style={{ width: "95px", textAlign: "right" }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {workerInvoices.map((inv) => {
+                        const gross = inv.financialSummary?.grossAmount || "0.00";
+                        const paidAmt = inv.financialSummary?.paid || "0.00";
+                        const bal = inv.financialSummary?.balance || "0.00";
+                        const invStatus =
+                          inv.status ||
+                          (Number(bal) <= 0 && Number(gross) > 0
+                            ? "paid"
+                            : Number(paidAmt) > 0
+                            ? "partial"
+                            : "unpaid");
+
+                        return (
+                          <tr key={inv.id || inv._id}>
+                            <td>
+                              <span className="erp-inv-badge font-mono">
+                                #{inv.invoiceNo}
+                              </span>
+                            </td>
+                            <td className="text-muted" style={{ fontSize: "0.82rem" }}>
+                              <div>{inv.invoiceDate}</div>
+                              {inv.invoiceTime && (
+                                <div style={{ fontSize: "0.74rem", color: "#94a3b8" }}>
+                                  {inv.invoiceTime}
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              <div className="font-semibold text-slate-800">
+                                {inv.customer?.name || "Walk-in Customer"}
+                              </div>
+                              {inv.customer?.mobile && (
+                                <div className="text-muted" style={{ fontSize: "0.76rem" }}>
+                                  📞 {inv.customer.mobile}
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              <div style={{ fontSize: "0.84rem", color: "#334155" }}>
+                                {inv.lineItems && inv.lineItems.length > 0 ? (
+                                  <span>
+                                    {inv.lineItems[0].description}
+                                    {inv.lineItems.length > 1 && (
+                                      <span className="erp-more-items-tag">
+                                        +{inv.lineItems.length - 1} more
+                                      </span>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted">General Service</span>
+                                )}
+                              </div>
+                            </td>
+                            <td style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                              {gross}
+                            </td>
+                            <td style={{ textAlign: "right", color: "#16a34a", fontVariantNumeric: "tabular-nums" }}>
+                              {paidAmt}
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              <span className={`erp-status-pill status-${invStatus}`}>
+                                {invStatus}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              <button
+                                type="button"
+                                onClick={() => setActivePrintInvoice(inv)}
+                                className="client-invoice-print-btn"
+                                title="Print Invoice"
+                              >
+                                🖨️ Print
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Printable Invoice Modal for Worker Admin */}
+      {activePrintInvoice && (
+        <PrintableInvoiceModal
+          invoice={activePrintInvoice}
+          onClose={() => setActivePrintInvoice(null)}
+        />
       )}
     </main>
   );

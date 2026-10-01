@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { API_BASE_URL } from "../config/api";
+import PrintableInvoiceModal, { PrintableInvoiceData } from "./PrintableInvoiceModal";
 
 export interface ClientFile {
   _id?: string;
@@ -199,6 +200,11 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
   const [togglingClientId, setTogglingClientId] = useState<string | null>(null);
   const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
 
+  // Client Invoices History State (Stored in MongoDB)
+  const [clientInvoices, setClientInvoices] = useState<any[]>([]);
+  const [isLoadingClientInvoices, setIsLoadingClientInvoices] = useState(false);
+  const [activePrintInvoice, setActivePrintInvoice] = useState<PrintableInvoiceData | null>(null);
+
   // Helper to build auth headers
   const getAuthHeaders = useCallback((): Record<string, string> => {
     const headers: Record<string, string> = {};
@@ -213,6 +219,55 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
     }
     return headers;
   }, [user]);
+
+  // Fetch invoices associated with selected client from MongoDB
+  const fetchClientInvoices = useCallback(
+    async (client: ClientItem) => {
+      setIsLoadingClientInvoices(true);
+      try {
+        const params = new URLSearchParams();
+        if (client.identifier) params.append("clientIdentifier", client.identifier);
+        if (client.phone) params.append("clientPhone", client.phone);
+        if (client.id) params.append("clientId", client.id);
+
+        const res = await fetch(
+          `${API_BASE_URL}/api/v1/admin/accounting/invoices?${params.toString()}`,
+          { headers: getAuthHeaders() }
+        );
+        if (res.ok) {
+          const json = await res.json();
+          setClientInvoices(json.data?.invoices || []);
+        }
+      } catch (err) {
+        console.error("Error fetching client invoices:", err);
+      } finally {
+        setIsLoadingClientInvoices(false);
+      }
+    },
+    [getAuthHeaders]
+  );
+
+  // Sync client invoices when selected client changes
+  useEffect(() => {
+    if (selectedClient) {
+      fetchClientInvoices(selectedClient);
+    } else {
+      setClientInvoices([]);
+    }
+  }, [selectedClient, fetchClientInvoices]);
+
+  // Listen to new invoice creations
+  useEffect(() => {
+    const handleInvoiceSaved = () => {
+      if (selectedClient) {
+        fetchClientInvoices(selectedClient);
+      }
+    };
+    window.addEventListener("abc_invoice_saved", handleInvoiceSaved);
+    return () => {
+      window.removeEventListener("abc_invoice_saved", handleInvoiceSaved);
+    };
+  }, [selectedClient, fetchClientInvoices]);
 
   // Initial load from MongoDB
   useEffect(() => {
@@ -1027,6 +1082,171 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
               </div>
             </div>
           </div>
+
+          {/* =========================================================
+              INVOICES & BILLING HISTORY (PERSISTED IN MONGODB)
+              ========================================================= */}
+          <div className="client-invoices-card">
+            <div className="client-invoices-header">
+              <div className="client-invoices-title-group">
+                <div className="client-invoices-icon">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect width="16" height="20" x="4" y="2" rx="2" />
+                    <line x1="8" x2="16" y1="6" y2="6" />
+                    <line x1="16" x2="16" y1="14" />
+                    <path d="M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="client-invoices-title">Invoices & Billing History</h3>
+                  <p className="client-invoices-subtitle">
+                    Permanent accounting records ({clientInvoices.length} invoices found in database)
+                  </p>
+                </div>
+              </div>
+
+              <div className="client-invoices-summary-stats">
+                <div className="client-stat-pill">
+                  <span className="stat-label">Invoices</span>
+                  <span className="stat-val">{clientInvoices.length}</span>
+                </div>
+                <div className="client-stat-pill highlight">
+                  <span className="stat-label">Total Billed</span>
+                  <span className="stat-val">
+                    AED{" "}
+                    {clientInvoices
+                      .reduce(
+                        (acc, inv) =>
+                          acc + Number(inv.financialSummary?.grossAmount || 0),
+                        0
+                      )
+                      .toFixed(2)}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fetchClientInvoices(selectedClient)}
+                  className="client-invoices-refresh-btn"
+                  title="Refresh Invoices from MongoDB"
+                >
+                  ↻
+                </button>
+              </div>
+            </div>
+
+            {isLoadingClientInvoices ? (
+              <div className="client-invoices-loading">
+                Loading client billing records from database...
+              </div>
+            ) : clientInvoices.length === 0 ? (
+              <div className="client-invoices-empty">
+                <p>No invoices created yet for this client.</p>
+                <span className="empty-subtext">
+                  Invoices created for this client in the Invoice window will automatically appear here.
+                </span>
+              </div>
+            ) : (
+              <div className="client-invoices-table-container">
+                <table className="client-invoices-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: "90px" }}>Invoice #</th>
+                      <th style={{ width: "120px" }}>Date & Time</th>
+                      <th>Services / Line Items</th>
+                      <th style={{ width: "120px" }}>Handled By</th>
+                      <th style={{ width: "110px", textAlign: "right" }}>Gross (AED)</th>
+                      <th style={{ width: "100px", textAlign: "right" }}>Paid (AED)</th>
+                      <th style={{ width: "100px", textAlign: "right" }}>Balance (AED)</th>
+                      <th style={{ width: "85px", textAlign: "center" }}>Status</th>
+                      <th style={{ width: "100px", textAlign: "right" }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clientInvoices.map((inv) => {
+                      const gross = inv.financialSummary?.grossAmount || "0.00";
+                      const paidAmt = inv.financialSummary?.paid || "0.00";
+                      const bal = inv.financialSummary?.balance || "0.00";
+                      const invStatus =
+                        inv.status ||
+                        (Number(bal) <= 0 && Number(gross) > 0
+                          ? "paid"
+                          : Number(paidAmt) > 0
+                          ? "partial"
+                          : "unpaid");
+
+                      return (
+                        <tr key={inv.id || inv._id}>
+                          <td>
+                            <span className="erp-inv-badge font-mono">
+                              #{inv.invoiceNo}
+                            </span>
+                          </td>
+                          <td className="text-muted" style={{ fontSize: "0.82rem" }}>
+                            <div>{inv.invoiceDate}</div>
+                            {inv.invoiceTime && (
+                              <div style={{ fontSize: "0.74rem", color: "#94a3b8" }}>
+                                {inv.invoiceTime}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <div style={{ fontSize: "0.84rem", color: "#334155" }}>
+                              {inv.lineItems && inv.lineItems.length > 0 ? (
+                                <span>
+                                  {inv.lineItems[0].description}
+                                  {inv.lineItems.length > 1 && (
+                                    <span className="erp-more-items-tag">
+                                      +{inv.lineItems.length - 1} more
+                                    </span>
+                                  )}
+                                </span>
+                              ) : (
+                                <span className="text-muted">General Service</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="text-muted" style={{ fontSize: "0.82rem" }}>
+                            {inv.lineItems?.[0]?.employee || inv.salesMan || "—"}
+                          </td>
+                          <td style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                            {gross}
+                          </td>
+                          <td style={{ textAlign: "right", color: "#16a34a", fontVariantNumeric: "tabular-nums" }}>
+                            {paidAmt}
+                          </td>
+                          <td
+                            style={{
+                              textAlign: "right",
+                              color: Number(bal) > 0 ? "#dc2626" : "#64748b",
+                              fontWeight: 600,
+                              fontVariantNumeric: "tabular-nums",
+                            }}
+                          >
+                            {bal}
+                          </td>
+                          <td style={{ textAlign: "center" }}>
+                            <span className={`erp-status-pill status-${invStatus}`}>
+                              {invStatus}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            <button
+                              type="button"
+                              onClick={() => setActivePrintInvoice(inv)}
+                              className="client-invoice-print-btn"
+                              title="Print Invoice"
+                            >
+                              🖨️ Print
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <>
@@ -1598,6 +1818,14 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
       )}
 
         </>
+      )}
+
+      {/* Printable Invoice Modal */}
+      {activePrintInvoice && (
+        <PrintableInvoiceModal
+          invoice={activePrintInvoice}
+          onClose={() => setActivePrintInvoice(null)}
+        />
       )}
     </div>
   );
