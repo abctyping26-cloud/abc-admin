@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import type { SidebarTab } from "./DashboardSidebar";
 import DatabaseLoadingOverlay from "./DatabaseLoadingOverlay";
 import ClientsManager from "./ClientsManager";
-import ServicesManager from "./ServicesManager";
+import WebsiteEditManager from "./WebsiteEditManager";
 import WhatsAppEnquiriesManager from "./WhatsAppEnquiriesManager";
 import CloudUsageSection from "./CloudUsageSection";
 import AccountingSection from "./AccountingSection";
@@ -2408,10 +2408,10 @@ export default function DashboardContent({
       )}
 
       {/* -------------------------------------------------------------
-          TAB: SERVICES & DOCUMENTATION (Master Admin & Worker Admins)
+          TAB: WEBSITE EDIT (Services, Docs & Top Marquee)
           ------------------------------------------------------------- */}
-      {activeTab === "services" && (
-        <ServicesManager user={user} isMaster={isMaster} />
+      {(activeTab === "website_edit" || activeTab === "services") && (
+        <WebsiteEditManager user={user} isMaster={isMaster} />
       )}
 
       {/* -------------------------------------------------------------

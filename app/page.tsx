@@ -50,6 +50,7 @@ function getServerSnapshot(): string | null {
 const VALID_TABS: SidebarTab[] = [
   "overview",
   "clients",
+  "website_edit",
   "services",
   "worker_admins",
   "enquiries",
@@ -80,6 +81,9 @@ function resolveInitialTab(): SidebarTab {
     // 1. Check URL query param (?tab=...)
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get("tab");
+    if (tabParam === "services") {
+      return "website_edit";
+    }
     if (isValidTab(tabParam)) {
       if (tabParam === "worker_admins" && isWorkerAdmin) {
         return "enquiries";

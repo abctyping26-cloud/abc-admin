@@ -9,6 +9,7 @@ export type SidebarTab =
   | "enquiries"
   | "whatsapp_enquiries"
   | "clients"
+  | "website_edit"
   | "services"
   | "accounting"
   | "cloud_usage";
@@ -270,11 +271,13 @@ export default function DashboardSidebar({
           </div>
         </button>
 
-        {/* Services & Documentation (Available to both Master Admin & Worker Admins) */}
+        {/* Website Edit (Services, Documentation & Top Marquee) */}
         <button
           type="button"
-          onClick={() => onSelectTab("services")}
-          className={`sidebar-menu-btn ${activeTab === "services" ? "active" : ""}`}
+          onClick={() => onSelectTab("website_edit")}
+          className={`sidebar-menu-btn ${
+            activeTab === "website_edit" || activeTab === "services" ? "active" : ""
+          }`}
         >
           <div className="sidebar-menu-left">
             <svg
@@ -284,10 +287,11 @@ export default function DashboardSidebar({
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <path d="M9 11l3 3L22 4" />
-              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+              <rect width="18" height="18" x="3" y="3" rx="2" />
+              <path d="M3 9h18" />
+              <path d="M9 21V9" />
             </svg>
-            <span>Services & Docs</span>
+            <span>Website Edit</span>
           </div>
         </button>
 
