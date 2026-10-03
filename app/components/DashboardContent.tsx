@@ -7,6 +7,7 @@ import ClientsManager from "./ClientsManager";
 import WebsiteEditManager from "./WebsiteEditManager";
 import WhatsAppEnquiriesManager from "./WhatsAppEnquiriesManager";
 import CloudUsageSection from "./CloudUsageSection";
+import WebTrafficSection from "./WebTrafficSection";
 import AccountingSection from "./AccountingSection";
 import PersonnelManager from "./PersonnelManager";
 import PrintableInvoiceModal, { PrintableInvoiceData } from "./PrintableInvoiceModal";
@@ -54,6 +55,7 @@ export interface EnquiryItem {
 interface DashboardContentProps {
   activeTab: SidebarTab;
   onNavigateTab?: (tab: SidebarTab) => void;
+  selectedProject?: "abc_typing" | "abc_neon";
   user: {
     id?: string;
     identifier?: string;
@@ -217,6 +219,7 @@ function ClientRingChart({
 export default function DashboardContent({
   activeTab,
   onNavigateTab,
+  selectedProject = "abc_typing",
   user,
   onPendingCountChange,
   onPendingWhatsAppCountChange,
@@ -2982,6 +2985,16 @@ export default function DashboardContent({
           ------------------------------------------------------------- */}
       {activeTab === "cloud_usage" && (
         <CloudUsageSection getAuthHeaders={getAdminAuthHeaders} />
+      )}
+
+      {/* -------------------------------------------------------------
+          TAB: WEB TRAFFIC & VISITOR ANALYTICS (Google Analytics 4 API)
+          ------------------------------------------------------------- */}
+      {activeTab === "web_traffic" && (
+        <WebTrafficSection
+          getAuthHeaders={getAdminAuthHeaders}
+          selectedProject={selectedProject}
+        />
       )}
 
       {/* Modal: Worker Admin First-Time Profile Setup */}

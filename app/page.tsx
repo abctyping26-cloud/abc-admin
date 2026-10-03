@@ -315,10 +315,11 @@ export default function Home() {
             aria-hidden="true"
           />
         )}
-        {selectedProject === "abc_typing" ? (
+        {selectedProject === "abc_typing" || activeTab === "web_traffic" || activeTab === "cloud_usage" ? (
           <DashboardContent
             activeTab={activeTab}
             onNavigateTab={handleTabChange}
+            selectedProject={selectedProject}
             user={user}
             onPendingCountChange={setPendingEnquiriesCount}
             onPendingWhatsAppCountChange={setPendingWhatsAppCount}

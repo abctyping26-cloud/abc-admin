@@ -12,7 +12,8 @@ export type SidebarTab =
   | "website_edit"
   | "services"
   | "accounting"
-  | "cloud_usage";
+  | "cloud_usage"
+  | "web_traffic";
 
 export type AdminProject = "abc_typing" | "abc_neon";
 
@@ -423,6 +424,26 @@ export default function DashboardSidebar({
             <span>Cloud & Usage</span>
           </div>
         </button>
+
+        {/* Web Traffic & Visitors (Google Analytics 4 Live) */}
+        <button
+          type="button"
+          onClick={() => onSelectTab("web_traffic")}
+          className={`sidebar-menu-btn ${activeTab === "web_traffic" ? "active" : ""}`}
+        >
+          <div className="sidebar-menu-left">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+            </svg>
+            <span>Web Traffic</span>
+          </div>
+        </button>
       </nav>
 
           {/* Centered abc logo at bottom of expanded sidebar */}
@@ -442,7 +463,60 @@ export default function DashboardSidebar({
           </div>
         </>
       ) : (
-        <div className="sidebar-empty-neon" />
+        <>
+          <nav className="sidebar-nav">
+            <button
+              type="button"
+              onClick={() => onSelectTab("web_traffic")}
+              className={`sidebar-menu-btn ${activeTab === "web_traffic" ? "active" : ""}`}
+            >
+              <div className="sidebar-menu-left">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+                <span>Web Traffic</span>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => onSelectTab("cloud_usage")}
+              className={`sidebar-menu-btn ${activeTab === "cloud_usage" ? "active" : ""}`}
+            >
+              <div className="sidebar-menu-left">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+                </svg>
+                <span>Cloud & Usage</span>
+              </div>
+            </button>
+          </nav>
+          <div className="sidebar-bottom-logo">
+            <Link
+              href="/?tab=web_traffic"
+              onClick={(e) => {
+                e.preventDefault();
+                onSelectTab("web_traffic");
+              }}
+              className="sidebar-logo-link"
+              aria-label="ABC Neon Admin"
+            >
+              <span className="sidebar-logo-text">abc neon</span>
+              <span className="sidebar-logo-dot" aria-hidden="true" />
+            </Link>
+          </div>
+        </>
       )}
     </aside>
   );
