@@ -2,9 +2,23 @@
 
 import React, { useState } from "react";
 import InvoiceView from "./InvoiceView";
+import QuotationView from "./QuotationView";
+import AdvanceReceiptView from "./AdvanceReceiptView";
+import PaymentVoucherView from "./PaymentVoucherView";
+import ReceiptVoucherView from "./ReceiptVoucherView";
+import IncomeView from "./IncomeView";
+import ExpenseView from "./ExpenseView";
+import BankTransactionView from "./BankTransactionView";
 import BankManager from "./BankManager";
 export type AccountingCategory = "masters" | "activities" | "reports" | "finance";
-export type FinanceAction = "invoice" | "banks" | "income" | "expense" | "referral_payment" | "bank_transaction";
+export type ActivitiesAction =
+  | "invoice"
+  | "quotation"
+  | "advance_receipt"
+  | "payment_voucher"
+  | "receipt_voucher";
+
+export type FinanceAction = "income" | "expense" | "bank_transaction";
 
 export interface CurrentAdminUser {
   id?: string;
@@ -25,12 +39,13 @@ export interface AccountingSectionProps {
 
 export default function AccountingSection({ user }: AccountingSectionProps = {}) {
   const [activeCategory, setActiveCategory] = useState<AccountingCategory>("finance");
-  const [activeFinanceAction, setActiveFinanceAction] = useState<FinanceAction | null>(null);
+  const [activeActivityAction, setActiveActivityAction] = useState<ActivitiesAction | null>("invoice");
+  const [activeFinanceAction, setActiveFinanceAction] = useState<FinanceAction | null>("income");
 
   return (
     <div className="accounting-manager-container">
-      {/* Top Header Row: Accounting Title on Left, 4 Ribbon Cube Buttons on Right (UNCHANGED) */}
-      <div className="content-header-row accounting-header-row" style={{ marginBottom: "16px" }}>
+      {/* Top Header Row: Accounting Title on Left, 4 Ribbon Cube Buttons on Right */}
+      <div className="content-header-row accounting-header-row">
         <div>
           <h1 className="content-title">Accounting</h1>
         </div>
@@ -163,180 +178,248 @@ export default function AccountingSection({ user }: AccountingSectionProps = {})
 
       {/* Main Workspace Layout: Open Canvas on Left, Ubuntu-Style Right Edge Dock on Right */}
       <div className="accounting-workspace-layout">
-        {/* Left/Center Main Content Canvas (Invoice View or Bank Manager shown when active) */}
+        {/* Left/Center Main Content Canvas */}
         <div className="accounting-main-canvas">
-          {activeCategory === "finance" && activeFinanceAction === "invoice" ? (
-            <InvoiceView user={user} onClose={() => setActiveFinanceAction(null)} />
-          ) : activeCategory === "finance" && activeFinanceAction === "banks" ? (
-            <BankManager user={user} />
+          {activeCategory === "activities" && activeActivityAction === "invoice" ? (
+            <InvoiceView user={user} onClose={() => setActiveActivityAction(null)} />
+          ) : activeCategory === "activities" && activeActivityAction === "quotation" ? (
+            <QuotationView user={user} onClose={() => setActiveActivityAction(null)} />
+          ) : activeCategory === "activities" && activeActivityAction === "advance_receipt" ? (
+            <AdvanceReceiptView user={user} onClose={() => setActiveActivityAction(null)} />
+          ) : activeCategory === "activities" && activeActivityAction === "payment_voucher" ? (
+            <PaymentVoucherView user={user} onClose={() => setActiveActivityAction(null)} />
+          ) : activeCategory === "activities" && activeActivityAction === "receipt_voucher" ? (
+            <ReceiptVoucherView user={user} onClose={() => setActiveActivityAction(null)} />
+          ) : activeCategory === "finance" && activeFinanceAction === "income" ? (
+            <IncomeView user={user} onClose={() => setActiveFinanceAction(null)} />
+          ) : activeCategory === "finance" && activeFinanceAction === "expense" ? (
+            <ExpenseView user={user} onClose={() => setActiveFinanceAction(null)} />
+          ) : activeCategory === "finance" && activeFinanceAction === "bank_transaction" ? (
+            <BankTransactionView user={user} onClose={() => setActiveFinanceAction(null)} />
           ) : (
             <div className="accounting-empty-space" />
           )}
         </div>
 
-        {/* Ubuntu-Style Right Edge Action Dock (Visible when Finance is active) */}
+        {/* Right Edge Action Buttons for Activities */}
+        {activeCategory === "activities" && (
+          <aside className="accounting-right-dock" aria-label="Activities Actions">
+            {/* Invoice */}
+            <button
+              type="button"
+              className={`accounting-cube-btn ${activeActivityAction === "invoice" ? "active" : ""}`}
+              onClick={() => setActiveActivityAction((prev: ActivitiesAction | null) => (prev === "invoice" ? null : "invoice"))}
+              title="Invoice"
+            >
+              <div className="cube-icon-wrapper">
+                <svg viewBox="0 0 36 36" width="28" height="28" fill="none" aria-hidden="true">
+                  {/* Document sheet */}
+                  <path
+                    d="M8 5a2 2 0 0 1 2-2h10l7 7v21a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V5z"
+                    fill="#ffffff"
+                    stroke="#2563eb"
+                    strokeWidth="1.5"
+                  />
+                  {/* Folded corner */}
+                  <path d="M20 3v7h7" fill="#dbeafe" stroke="#2563eb" strokeWidth="1.5" />
+                  {/* Blue header bar */}
+                  <rect x="11" y="11" width="14" height="2.5" rx="0.75" fill="#2563eb" />
+                  {/* Invoice lines */}
+                  <line x1="11" y1="16.5" x2="25" y2="16.5" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="11" y1="20.5" x2="21" y2="20.5" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="11" y1="24.5" x2="18" y2="24.5" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+                  {/* Bottom coin/stamp badge */}
+                  <circle cx="23" cy="25.5" r="3.5" fill="#fef08a" stroke="#ca8a04" strokeWidth="1" />
+                  <text x="23" y="27.5" textAnchor="middle" fill="#854d0e" fontSize="5" fontWeight="bold">
+                    $
+                  </text>
+                </svg>
+              </div>
+              <span className="cube-label">Invoice</span>
+            </button>
+
+            {/* Quotation */}
+            <button
+              type="button"
+              className={`accounting-cube-btn ${activeActivityAction === "quotation" ? "active" : ""}`}
+              onClick={() => setActiveActivityAction((prev: ActivitiesAction | null) => (prev === "quotation" ? null : "quotation"))}
+              title="Quotation"
+            >
+              <div className="cube-icon-wrapper">
+                <svg viewBox="0 0 36 36" width="28" height="28" fill="none" aria-hidden="true">
+                  <path
+                    d="M8 5a2 2 0 0 1 2-2h10l7 7v21a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V5z"
+                    fill="#ffffff"
+                    stroke="#7c3aed"
+                    strokeWidth="1.5"
+                  />
+                  <path d="M20 3v7h7" fill="#ede9fe" stroke="#7c3aed" strokeWidth="1.5" />
+                  <rect x="11" y="11" width="14" height="2.5" rx="0.75" fill="#7c3aed" />
+                  <line x1="11" y1="16.5" x2="25" y2="16.5" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="11" y1="20.5" x2="21" y2="20.5" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+                  <circle cx="23" cy="25" r="4" fill="url(#quoteGrad)" stroke="#6d28d9" strokeWidth="1" />
+                  <text x="23" y="27.5" textAnchor="middle" fill="#ffffff" fontSize="6.5" fontWeight="bold" fontFamily="sans-serif">
+                    Q
+                  </text>
+                  <defs>
+                    <radialGradient id="quoteGrad" cx="35%" cy="35%">
+                      <stop offset="0%" stopColor="#a855f7" />
+                      <stop offset="100%" stopColor="#6d28d9" />
+                    </radialGradient>
+                  </defs>
+                </svg>
+              </div>
+              <span className="cube-label">Quotation</span>
+            </button>
+
+            {/* Advance Receipt */}
+            <button
+              type="button"
+              className={`accounting-cube-btn ${activeActivityAction === "advance_receipt" ? "active" : ""}`}
+              onClick={() => setActiveActivityAction((prev: ActivitiesAction | null) => (prev === "advance_receipt" ? null : "advance_receipt"))}
+              title="Advance Receipt"
+            >
+              <div className="cube-icon-wrapper">
+                <svg viewBox="0 0 36 36" width="28" height="28" fill="none" aria-hidden="true">
+                  <rect x="6" y="5" width="24" height="26" rx="2" fill="#ffffff" stroke="#059669" strokeWidth="1.5" />
+                  <path d="M6 11h24" stroke="#059669" strokeWidth="1.5" />
+                  <line x1="10" y1="16" x2="26" y2="16" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="10" y1="20" x2="20" y2="20" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+                  <circle cx="23" cy="24" r="4.2" fill="url(#advGreenGrad)" stroke="#047857" strokeWidth="1" />
+                  <text x="23" y="26.2" textAnchor="middle" fill="#ffffff" fontSize="5" fontWeight="bold" fontFamily="sans-serif">
+                    AR
+                  </text>
+                  <defs>
+                    <radialGradient id="advGreenGrad" cx="35%" cy="35%">
+                      <stop offset="0%" stopColor="#10b981" />
+                      <stop offset="100%" stopColor="#047857" />
+                    </radialGradient>
+                  </defs>
+                </svg>
+              </div>
+              <span className="cube-label">Adv Receipt</span>
+            </button>
+
+            {/* Payment Voucher */}
+            <button
+              type="button"
+              className={`accounting-cube-btn ${activeActivityAction === "payment_voucher" ? "active" : ""}`}
+              onClick={() => setActiveActivityAction((prev: ActivitiesAction | null) => (prev === "payment_voucher" ? null : "payment_voucher"))}
+              title="Payment Voucher"
+            >
+              <div className="cube-icon-wrapper">
+                <svg viewBox="0 0 36 36" width="28" height="28" fill="none" aria-hidden="true">
+                  <rect x="4" y="8" width="28" height="20" rx="2" fill="#ffffff" stroke="#ea580c" strokeWidth="1.5" />
+                  <line x1="4" y1="14" x2="32" y2="14" stroke="#ea580c" strokeWidth="1.5" />
+                  <line x1="8" y1="19" x2="18" y2="19" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="8" y1="23" x2="16" y2="23" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+                  <circle cx="25" cy="21" r="4.2" fill="url(#payAmberGrad)" stroke="#c2410c" strokeWidth="1" />
+                  <text x="25" y="23.2" textAnchor="middle" fill="#ffffff" fontSize="5" fontWeight="bold" fontFamily="sans-serif">
+                    PV
+                  </text>
+                  <defs>
+                    <radialGradient id="payAmberGrad" cx="35%" cy="35%">
+                      <stop offset="0%" stopColor="#f97316" />
+                      <stop offset="100%" stopColor="#c2410c" />
+                    </radialGradient>
+                  </defs>
+                </svg>
+              </div>
+              <span className="cube-label">Pay Voucher</span>
+            </button>
+
+            {/* Receipt Voucher */}
+            <button
+              type="button"
+              className={`accounting-cube-btn ${activeActivityAction === "receipt_voucher" ? "active" : ""}`}
+              onClick={() => setActiveActivityAction((prev: ActivitiesAction | null) => (prev === "receipt_voucher" ? null : "receipt_voucher"))}
+              title="Receipt Voucher"
+            >
+              <div className="cube-icon-wrapper">
+                <svg viewBox="0 0 36 36" width="28" height="28" fill="none" aria-hidden="true">
+                  <rect x="5" y="6" width="26" height="24" rx="2" fill="#ffffff" stroke="#0891b2" strokeWidth="1.5" />
+                  <line x1="9" y1="11" x2="27" y2="11" stroke="#0891b2" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="9" y1="16" x2="27" y2="16" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="9" y1="21" x2="19" y2="21" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+                  <circle cx="24" cy="23" r="4.2" fill="url(#recCyanGrad)" stroke="#0e7490" strokeWidth="1" />
+                  <text x="24" y="25.2" textAnchor="middle" fill="#ffffff" fontSize="5" fontWeight="bold" fontFamily="sans-serif">
+                    RV
+                  </text>
+                  <defs>
+                    <radialGradient id="recCyanGrad" cx="35%" cy="35%">
+                      <stop offset="0%" stopColor="#06b6d4" />
+                      <stop offset="100%" stopColor="#0e7490" />
+                    </radialGradient>
+                  </defs>
+                </svg>
+              </div>
+              <span className="cube-label">Rec Voucher</span>
+            </button>
+          </aside>
+        )}
+
+        {/* Right Edge Action Buttons for Finance */}
         {activeCategory === "finance" && (
-          <aside className="accounting-right-dock" aria-label="Finance Actions Dock">
-            {/* Dock Header */}
-            <div className="dock-header">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-                <ellipse cx="12" cy="16" rx="8" ry="3.5" fill="#eab308" stroke="#ca8a04" strokeWidth="1" />
-                <ellipse cx="11" cy="13" rx="7.5" ry="3.2" fill="#facc15" stroke="#ca8a04" strokeWidth="1" />
-                <ellipse cx="9" cy="10" rx="7" ry="3" fill="#fde047" stroke="#ca8a04" strokeWidth="1" />
-                <text x="9" y="12" textAnchor="middle" fill="#854d0e" fontSize="6" fontWeight="bold">
-                  $
-                </text>
-              </svg>
-              <span className="dock-header-title">Finance</span>
-            </div>
+          <aside className="accounting-right-dock" aria-label="Finance Actions">
+            {/* Income */}
+            <button
+              type="button"
+              className={`accounting-cube-btn ${activeFinanceAction === "income" ? "active" : ""}`}
+              onClick={() => setActiveFinanceAction((prev: FinanceAction | null) => (prev === "income" ? null : "income"))}
+              title="Income"
+            >
+              <div className="cube-icon-wrapper">
+                <svg viewBox="0 0 36 36" width="28" height="28" fill="none" aria-hidden="true">
+                  <path d="M18 2v10m-3.5-3.5L18 12l3.5-3.5" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <rect x="4" y="14" width="28" height="16" rx="2" fill="#f0fdf4" stroke="#16a34a" strokeWidth="1.5" />
+                  <circle cx="18" cy="22" r="4" fill="#dcfce7" stroke="#16a34a" strokeWidth="1.2" />
+                  <text x="18" y="24.5" textAnchor="middle" fill="#15803d" fontSize="7" fontWeight="bold">
+                    $
+                  </text>
+                </svg>
+              </div>
+              <span className="cube-label">Income</span>
+            </button>
 
-            {/* Vertical Stack of Dock Action Buttons */}
-            <div className="dock-items-wrapper" role="toolbar" aria-label="Finance Actions">
-              {/* Invoice */}
-              <button
-                type="button"
-                className={`dock-action-cube ${activeFinanceAction === "invoice" ? "active" : ""}`}
-                onClick={() => setActiveFinanceAction((prev: FinanceAction | null) => (prev === "invoice" ? null : "invoice"))}
-                title="Invoice"
-              >
-                <span className="dock-active-pip" aria-hidden="true" />
-                <div className="dock-cube-icon">
-                  <svg viewBox="0 0 36 36" width="28" height="28" fill="none" aria-hidden="true">
-                    {/* Document sheet */}
-                    <path
-                      d="M8 5a2 2 0 0 1 2-2h10l7 7v21a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V5z"
-                      fill="#ffffff"
-                      stroke="#2563eb"
-                      strokeWidth="1.5"
-                    />
-                    {/* Folded corner */}
-                    <path d="M20 3v7h7" fill="#dbeafe" stroke="#2563eb" strokeWidth="1.5" />
-                    {/* Blue header bar */}
-                    <rect x="11" y="11" width="14" height="2.5" rx="0.75" fill="#2563eb" />
-                    {/* Invoice lines */}
-                    <line x1="11" y1="16.5" x2="25" y2="16.5" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
-                    <line x1="11" y1="20.5" x2="21" y2="20.5" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
-                    <line x1="11" y1="24.5" x2="18" y2="24.5" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
-                    {/* Bottom coin/stamp badge */}
-                    <circle cx="23" cy="25.5" r="3.5" fill="#fef08a" stroke="#ca8a04" strokeWidth="1" />
-                    <text x="23" y="27.5" textAnchor="middle" fill="#854d0e" fontSize="5" fontWeight="bold">
-                      $
-                    </text>
-                  </svg>
-                </div>
-                <span className="dock-cube-label">Invoice</span>
-              </button>
+            {/* Expense */}
+            <button
+              type="button"
+              className={`accounting-cube-btn ${activeFinanceAction === "expense" ? "active" : ""}`}
+              onClick={() => setActiveFinanceAction((prev: FinanceAction | null) => (prev === "expense" ? null : "expense"))}
+              title="Expense"
+            >
+              <div className="cube-icon-wrapper">
+                <svg viewBox="0 0 36 36" width="28" height="28" fill="none" aria-hidden="true">
+                  <path d="M18 12V2m-3.5 3.5L18 2l3.5 3.5" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <rect x="4" y="14" width="28" height="16" rx="2" fill="#fef2f2" stroke="#dc2626" strokeWidth="1.5" />
+                  <circle cx="18" cy="22" r="4" fill="#fee2e2" stroke="#dc2626" strokeWidth="1.2" />
+                  <text x="18" y="24.5" textAnchor="middle" fill="#b91c1c" fontSize="7" fontWeight="bold">
+                    $
+                  </text>
+                </svg>
+              </div>
+              <span className="cube-label">Expense</span>
+            </button>
 
-              {/* Banks */}
-              <button
-                type="button"
-                className={`dock-action-cube ${activeFinanceAction === "banks" ? "active" : ""}`}
-                onClick={() => setActiveFinanceAction((prev: FinanceAction | null) => (prev === "banks" ? null : "banks"))}
-                title="Bank Accounts"
-              >
-                <span className="dock-active-pip" aria-hidden="true" />
-                <div className="dock-cube-icon">
-                  <svg viewBox="0 0 36 36" width="28" height="28" fill="none" aria-hidden="true">
-                    <polygon points="18,5 4,12 32,12" fill="#1e3a8a" />
-                    <rect x="6" y="12" width="24" height="2" fill="#3b82f6" />
-                    <rect x="8" y="14" width="3" height="11" rx="0.5" fill="#60a5fa" />
-                    <rect x="13.5" y="14" width="3" height="11" rx="0.5" fill="#60a5fa" />
-                    <rect x="19.5" y="14" width="3" height="11" rx="0.5" fill="#60a5fa" />
-                    <rect x="25" y="14" width="3" height="11" rx="0.5" fill="#60a5fa" />
-                    <rect x="4" y="25" width="28" height="3" rx="0.5" fill="#1e3a8a" />
-                    <rect x="2" y="28" width="32" height="2.5" rx="0.5" fill="#0f172a" />
-                  </svg>
-                </div>
-                <span className="dock-cube-label">Banks</span>
-              </button>
-
-              {/* Income */}
-              <button
-                type="button"
-                className={`dock-action-cube ${activeFinanceAction === "income" ? "active" : ""}`}
-                onClick={() => setActiveFinanceAction("income")}
-                title="Income"
-              >
-                <span className="dock-active-pip" aria-hidden="true" />
-                <div className="dock-cube-icon">
-                  <svg viewBox="0 0 36 36" width="28" height="28" fill="none" aria-hidden="true">
-                    <path d="M18 2v10m-3.5-3.5L18 12l3.5-3.5" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <rect x="4" y="14" width="28" height="16" rx="2" fill="#f0fdf4" stroke="#16a34a" strokeWidth="1.5" />
-                    <circle cx="18" cy="22" r="4" fill="#dcfce7" stroke="#16a34a" strokeWidth="1.2" />
-                    <text x="18" y="24.5" textAnchor="middle" fill="#15803d" fontSize="7" fontWeight="bold">
-                      $
-                    </text>
-                  </svg>
-                </div>
-                <span className="dock-cube-label">Income</span>
-              </button>
-
-              {/* Expense */}
-              <button
-                type="button"
-                className={`dock-action-cube ${activeFinanceAction === "expense" ? "active" : ""}`}
-                onClick={() => setActiveFinanceAction("expense")}
-                title="Expense"
-              >
-                <span className="dock-active-pip" aria-hidden="true" />
-                <div className="dock-cube-icon">
-                  <svg viewBox="0 0 36 36" width="28" height="28" fill="none" aria-hidden="true">
-                    <path d="M18 12V2m-3.5 3.5L18 2l3.5 3.5" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <rect x="4" y="14" width="28" height="16" rx="2" fill="#fef2f2" stroke="#dc2626" strokeWidth="1.5" />
-                    <circle cx="18" cy="22" r="4" fill="#fee2e2" stroke="#dc2626" strokeWidth="1.2" />
-                    <text x="18" y="24.5" textAnchor="middle" fill="#b91c1c" fontSize="7" fontWeight="bold">
-                      $
-                    </text>
-                  </svg>
-                </div>
-                <span className="dock-cube-label">Expense</span>
-              </button>
-
-              {/* Referral Payment */}
-              <button
-                type="button"
-                className={`dock-action-cube ${activeFinanceAction === "referral_payment" ? "active" : ""}`}
-                onClick={() => setActiveFinanceAction("referral_payment")}
-                title="Referral Payment"
-              >
-                <span className="dock-active-pip" aria-hidden="true" />
-                <div className="dock-cube-icon">
-                  <svg viewBox="0 0 36 36" width="28" height="28" fill="none" aria-hidden="true">
-                    <rect x="4" y="7" width="22" height="13" rx="1.5" transform="rotate(-8 4 7)" fill="#ecfdf5" stroke="#059669" strokeWidth="1.2" />
-                    <rect x="6" y="9" width="22" height="13" rx="1.5" fill="#f0fdf4" stroke="#10b981" strokeWidth="1.3" />
-                    <circle cx="17" cy="15.5" r="3.2" fill="#d1fae5" stroke="#059669" strokeWidth="1" />
-                    <ellipse cx="25" cy="25" rx="7.5" ry="3.5" fill="#eab308" stroke="#ca8a04" strokeWidth="1" />
-                    <ellipse cx="23" cy="22" rx="7.5" ry="3.5" fill="#facc15" stroke="#ca8a04" strokeWidth="1" />
-                    <ellipse cx="20" cy="19" rx="7" ry="3.2" fill="#fde047" stroke="#ca8a04" strokeWidth="1" />
-                    <text x="20" y="21" textAnchor="middle" fill="#854d0e" fontSize="6.5" fontWeight="bold">
-                      $
-                    </text>
-                  </svg>
-                </div>
-                <span className="dock-cube-label">Referral</span>
-              </button>
-
-              {/* Bank Transaction */}
-              <button
-                type="button"
-                className={`dock-action-cube ${activeFinanceAction === "bank_transaction" ? "active" : ""}`}
-                onClick={() => setActiveFinanceAction("bank_transaction")}
-                title="Bank Transaction"
-              >
-                <span className="dock-active-pip" aria-hidden="true" />
-                <div className="dock-cube-icon">
-                  <svg viewBox="0 0 36 36" width="28" height="28" fill="none" aria-hidden="true">
-                    <rect x="8" y="8" width="20" height="24" rx="2" fill="#ffffff" stroke="#64748b" strokeWidth="1.5" />
-                    <line x1="12" y1="14" x2="24" y2="14" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
-                    <line x1="12" y1="18" x2="24" y2="18" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
-                    <line x1="12" y1="22" x2="20" y2="22" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
-                    <line x1="12" y1="26" x2="18" y2="26" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
-                    <path d="M12 12V5a3 3 0 0 1 6 0v8a4.5 4.5 0 0 1-9 0V6" fill="none" stroke="#2563eb" strokeWidth="1.8" strokeLinecap="round" />
-                  </svg>
-                </div>
-                <span className="dock-cube-label">Bank Tx</span>
-              </button>
-            </div>
+            {/* Bank Transaction */}
+            <button
+              type="button"
+              className={`accounting-cube-btn ${activeFinanceAction === "bank_transaction" ? "active" : ""}`}
+              onClick={() => setActiveFinanceAction((prev: FinanceAction | null) => (prev === "bank_transaction" ? null : "bank_transaction"))}
+              title="Bank Transaction"
+            >
+              <div className="cube-icon-wrapper">
+                <svg viewBox="0 0 36 36" width="28" height="28" fill="none" aria-hidden="true">
+                  <rect x="8" y="8" width="20" height="24" rx="2" fill="#ffffff" stroke="#64748b" strokeWidth="1.5" />
+                  <line x1="12" y1="14" x2="24" y2="14" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="12" y1="18" x2="24" y2="18" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="12" y1="22" x2="20" y2="22" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="12" y1="26" x2="18" y2="26" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M12 12V5a3 3 0 0 1 6 0v8a4.5 4.5 0 0 1-9 0V6" fill="none" stroke="#2563eb" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </div>
+              <span className="cube-label">Bank Tx</span>
+            </button>
           </aside>
         )}
       </div>

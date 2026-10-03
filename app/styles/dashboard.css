@@ -7014,6 +7014,8 @@
   gap: 16px;
   flex-wrap: wrap;
   min-height: 40px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 /* Top 4 Ribbon Cube Buttons */
@@ -7102,124 +7104,22 @@
   min-height: calc(100vh - 160px);
 }
 
-/* Ubuntu-Style Right Edge Dock */
+/* Deboxed Right Edge Action Buttons (No wrap container, just standalone buttons like top-right) */
 .accounting-right-dock {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 88px;
+  gap: 8px;
+  width: auto;
   flex-shrink: 0;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 10px 8px;
-  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
   position: sticky;
   top: 16px;
   z-index: 10;
-}
-
-.dock-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding-bottom: 8px;
-  margin-bottom: 8px;
-  width: 100%;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.dock-header-title {
-  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.dock-items-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-}
-
-.dock-action-cube {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 72px;
-  height: 64px;
-  padding: 6px 4px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  user-select: none;
-}
-
-.dock-action-cube:hover {
-  background-color: #ffffff;
-  border-color: #cbd5e1;
-  transform: translateX(-2px);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
-}
-
-.dock-action-cube:active {
-  transform: translateX(0);
-}
-
-.dock-action-cube.active {
-  background-color: #eff6ff;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-/* Ubuntu-style active indicator pip on the right edge */
-.dock-active-pip {
-  display: none;
-  position: absolute;
-  right: -5px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 16px;
-  border-radius: 9999px;
-  background: #ea580c;
-  box-shadow: 0 0 4px rgba(234, 88, 12, 0.5);
-}
-
-.dock-action-cube.active .dock-active-pip {
-  display: block;
-}
-
-.dock-cube-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 28px;
-}
-
-.dock-cube-label {
-  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: #334155;
-  margin-top: 3px;
-  line-height: 1.1;
-  text-align: center;
-  white-space: nowrap;
-}
-
-.dock-action-cube.active .dock-cube-label {
-  color: #1d4ed8;
-  font-weight: 700;
 }
 
 /* Responsive Stacking */
@@ -7251,32 +7151,13 @@
     width: 100%;
     position: static;
     flex-direction: row;
-    justify-content: space-between;
-    padding: 8px 12px;
-  }
-
-  .dock-header {
-    display: none;
-  }
-
-  .dock-items-wrapper {
-    flex-direction: row;
-    justify-content: space-around;
-    width: 100%;
-  }
-
-  .dock-action-cube {
-    width: 68px;
-    height: 58px;
-  }
-
-  .dock-active-pip {
-    right: 50%;
-    bottom: -4px;
-    top: auto;
-    transform: translateX(50%);
-    width: 16px;
-    height: 3px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
   }
 }
 
@@ -10254,6 +10135,155 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* ==========================================================================
+   CLASSIC ERP ENHANCED STYLING (Quotation, Advance Receipt, Payment/Receipt Vouchers)
+   ========================================================================== */
+
+.erp-textarea {
+  width: 100%;
+  padding: 4px 6px;
+  font-size: 0.76rem;
+  font-family: inherit;
+  border: 1px solid #94a3b8;
+  background-color: #ffffff;
+  border-radius: 2px;
+  box-sizing: border-box;
+  resize: vertical;
+  color: #0f172a;
+}
+
+.erp-textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+/* Group Box with Small Floating Title */
+.erp-group-box {
+  position: relative;
+  border: 1px solid #94a3b8;
+  border-radius: 3px;
+  padding: 6px 10px;
+  background: #f8fafc;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.erp-group-box-title {
+  position: absolute;
+  top: -8px;
+  left: 8px;
+  background: #ebf0f5;
+  padding: 0 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #2563eb;
+  line-height: 1;
+}
+
+.erp-radio-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.76rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.erp-recent-quotation-tag {
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 0.75rem;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+/* Right-Side Invoice Details Summary Panel */
+.erp-invoice-side-summary {
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  background: #f8fafc;
+  padding: 8px 12px;
+  width: 170px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.erp-invoice-side-title {
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 0.78rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 2px;
+  margin-bottom: 2px;
+}
+
+.erp-invoice-side-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.74rem;
+  color: #0f172a;
+}
+
+.erp-invoice-side-row .label {
+  font-weight: 600;
+}
+
+.erp-invoice-side-row .val {
+  font-weight: 700;
+}
+
+/* Classic Glossy Metallic Action Bar (Bottom Toolbar) */
+.erp-classic-glossy-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: linear-gradient(180deg, #6c8cae 0%, #4a6c92 48%, #2d4f75 52%, #3a5c82 100%);
+  border: 1px solid #1e3a8a;
+  border-radius: 3px;
+  padding: 3px 6px;
+  user-select: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.erp-glossy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 12px;
+  height: 24px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #0f172a;
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 45%, #e2e8f0 55%, #cbd5e1 100%);
+  border: 1px solid #64748b;
+  border-radius: 2px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: all 0.1s ease;
+}
+
+.erp-glossy-btn:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 45%, #eef2f6 55%, #dbeafe 100%);
+  border-color: #2563eb;
+  transform: translateY(-1px);
+}
+
+.erp-glossy-btn:active {
+  transform: translateY(1px);
+  background: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%);
+}
+
+.erp-glossy-btn u {
+  text-decoration-thickness: 1.5px;
+}
+
 
 
 
