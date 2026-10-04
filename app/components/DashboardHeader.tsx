@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import type { SidebarTab } from "./DashboardSidebar";
+import { useTheme } from "../context/ThemeContext";
 
 interface DashboardHeaderProps {
   user: {
@@ -33,6 +34,8 @@ export default function DashboardHeader({
     : user?.name?.trim()
     ? user.name.trim()[0].toLowerCase()
     : "w";
+
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <header className="dashboard-header">
@@ -75,8 +78,52 @@ export default function DashboardHeader({
         </Link>
       </div>
 
-      {/* Right side: plain bell icon, circle M + user name, plain logout icon */}
+      {/* Right side: dark mode toggle, plain bell icon, circle M + user name, plain logout icon */}
       <div className="header-right">
+        {/* Dark Mode Toggle */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="header-theme-toggle-btn"
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {theme === "dark" ? (
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              width="16"
+              height="16"
+            >
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2" />
+              <path d="M12 20v2" />
+              <path d="m4.93 4.93 1.41 1.41" />
+              <path d="m17.66 17.66 1.41 1.41" />
+              <path d="M2 12h2" />
+              <path d="M20 12h2" />
+              <path d="m6.34 17.66-1.41 1.41" />
+              <path d="m19.07 4.93-1.41 1.41" />
+            </svg>
+          ) : (
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              width="16"
+              height="16"
+            >
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+            </svg>
+          )}
+        </button>
         {/* Bell Icon in plain sight without border */}
         <button
           type="button"

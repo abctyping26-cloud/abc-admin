@@ -3686,7 +3686,7 @@ export default function DashboardContent({
           TAB: ACCOUNTING (Workspace & Empty Canvas)
           ------------------------------------------------------------- */}
       {activeTab === "accounting" && (
-        <AccountingSection user={user} />
+        <AccountingSection user={user} getAuthHeaders={getAdminAuthHeaders} />
       )}
 
       {/* -------------------------------------------------------------

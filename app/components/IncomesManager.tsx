@@ -234,9 +234,20 @@ export default function IncomesManager({ getAuthHeaders, onNavigateTab }: Income
         <button
           type="button"
           onClick={() => {
-            setModalError("");
-            setModalIncomeId(`IN/${Math.floor(10 + Math.random() * 900)}`);
-            setIsModalOpen(true);
+            if (typeof window !== "undefined") {
+              try {
+                sessionStorage.setItem("abc_accounting_category", "finance");
+                sessionStorage.setItem("abc_accounting_finance_action", "income");
+              } catch {}
+              window.dispatchEvent(
+                new CustomEvent("abc_navigate_accounting", {
+                  detail: { category: "finance", financeAction: "income" },
+                })
+              );
+            }
+            if (onNavigateTab) {
+              onNavigateTab("accounting");
+            }
           }}
           className="capsule-btn-black"
         >
@@ -463,10 +474,10 @@ export default function IncomesManager({ getAuthHeaders, onNavigateTab }: Income
 
       {/* RECORD INCOME MODAL */}
       {isModalOpen && (
-        <div className="admin-modal-overlay" onClick={() => setIsModalOpen(false)}>
+        <div className="admin-modal-backdrop" onClick={() => setIsModalOpen(false)}>
           <div
-            className="admin-modal-card"
-            style={{ maxWidth: 540 }}
+            className="admin-modal-box"
+            style={{ maxWidth: 480 }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"

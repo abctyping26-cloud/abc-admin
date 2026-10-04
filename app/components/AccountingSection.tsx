@@ -35,12 +35,52 @@ export interface CurrentAdminUser {
 
 export interface AccountingSectionProps {
   user?: CurrentAdminUser | null;
+  initialCategory?: AccountingCategory;
+  initialFinanceAction?: FinanceAction | null;
+  getAuthHeaders?: () => Record<string, string>;
 }
 
-export default function AccountingSection({ user }: AccountingSectionProps = {}) {
-  const [activeCategory, setActiveCategory] = useState<AccountingCategory>("finance");
+export default function AccountingSection({
+  user,
+  initialCategory = "finance",
+  initialFinanceAction = "income",
+  getAuthHeaders,
+}: AccountingSectionProps = {}) {
+  const [activeCategory, setActiveCategory] = useState<AccountingCategory>(() => {
+    if (typeof window !== "undefined") {
+      const storedCat = sessionStorage.getItem("abc_accounting_category") as AccountingCategory | null;
+      if (storedCat) {
+        sessionStorage.removeItem("abc_accounting_category");
+        return storedCat;
+      }
+    }
+    return initialCategory;
+  });
   const [activeActivityAction, setActiveActivityAction] = useState<ActivitiesAction | null>("invoice");
-  const [activeFinanceAction, setActiveFinanceAction] = useState<FinanceAction | null>("income");
+  const [activeFinanceAction, setActiveFinanceAction] = useState<FinanceAction | null>(() => {
+    if (typeof window !== "undefined") {
+      const storedAction = sessionStorage.getItem("abc_accounting_finance_action") as FinanceAction | null;
+      if (storedAction) {
+        sessionStorage.removeItem("abc_accounting_finance_action");
+        return storedAction;
+      }
+    }
+    return initialFinanceAction;
+  });
+
+  React.useEffect(() => {
+    const handleNav = (e: Event) => {
+      const customEvent = e as CustomEvent<{ category?: AccountingCategory; financeAction?: FinanceAction }>;
+      if (customEvent.detail?.category) {
+        setActiveCategory(customEvent.detail.category);
+      }
+      if (customEvent.detail?.financeAction) {
+        setActiveFinanceAction(customEvent.detail.financeAction);
+      }
+    };
+    window.addEventListener("abc_navigate_accounting", handleNav);
+    return () => window.removeEventListener("abc_navigate_accounting", handleNav);
+  }, []);
 
   return (
     <div className="accounting-manager-container">
@@ -191,7 +231,7 @@ export default function AccountingSection({ user }: AccountingSectionProps = {})
           ) : activeCategory === "activities" && activeActivityAction === "receipt_voucher" ? (
             <ReceiptVoucherView user={user} onClose={() => setActiveActivityAction(null)} />
           ) : activeCategory === "finance" && activeFinanceAction === "income" ? (
-            <IncomeView user={user} onClose={() => setActiveFinanceAction(null)} />
+            <IncomeView user={user} onClose={() => setActiveFinanceAction(null)} getAuthHeaders={getAuthHeaders} />
           ) : activeCategory === "finance" && activeFinanceAction === "expense" ? (
             <ExpenseView user={user} onClose={() => setActiveFinanceAction(null)} />
           ) : activeCategory === "finance" && activeFinanceAction === "bank_transaction" ? (

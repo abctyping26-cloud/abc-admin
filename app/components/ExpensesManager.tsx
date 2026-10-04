@@ -481,10 +481,10 @@ export default function ExpensesManager({ getAuthHeaders, onNavigateTab }: Expen
 
       {/* RECORD EXPENSE MODAL */}
       {isModalOpen && (
-        <div className="admin-modal-overlay" onClick={() => setIsModalOpen(false)}>
+        <div className="admin-modal-backdrop" onClick={() => setIsModalOpen(false)}>
           <div
-            className="admin-modal-card"
-            style={{ maxWidth: 560 }}
+            className="admin-modal-box"
+            style={{ maxWidth: 480 }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"

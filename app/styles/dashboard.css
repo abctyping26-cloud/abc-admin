@@ -1779,26 +1779,29 @@
   background-color: #ffffff;
 }
 
-/* Modal for Creating Admin */
-.admin-modal-backdrop {
+/* Modal for Creating Admin & Accounting Forms */
+.admin-modal-backdrop,
+.admin-modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(15, 23, 42, 0.4);
+  background-color: rgba(15, 23, 42, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999;
+  z-index: 9999;
   padding: 20px;
 }
 
-.admin-modal-box {
+.admin-modal-box,
+.admin-modal-card {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
+  border-radius: 14px;
   width: 100%;
   max-width: 440px;
   padding: 24px 28px;
   box-shadow: none !important;
+  box-sizing: border-box;
 }
 
 .admin-modal-header {
@@ -1880,6 +1883,24 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 8px;
+}
+
+.cancel-link-btn {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cancel-link-btn:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
 }
 
 /* ==========================================================================

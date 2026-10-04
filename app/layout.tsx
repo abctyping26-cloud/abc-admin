@@ -5,6 +5,8 @@ import ServerWarmer from "./components/ServerWarmer";
 import "aos/dist/aos.css";
 import "./globals.css";
 
+import { ThemeProvider } from "./context/ThemeContext";
+
 export const metadata: Metadata = {
   title: "ABC Typing Admin",
   description: "Admin Portal for ABC Typing Services",
@@ -16,12 +18,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-white text-[#0f172a] antialiased">
-        <ServerWarmer />
-        <AOSInit />
-        <AuthToast />
-        {children}
+        <ThemeProvider>
+          <ServerWarmer />
+          <AOSInit />
+          <AuthToast />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
