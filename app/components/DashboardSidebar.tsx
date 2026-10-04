@@ -16,6 +16,7 @@ export type SidebarTab =
   | "accounting_incomes"
   | "accounting_expenses"
   | "accounting_invoices"
+  | "accounting_banks"
   | "cloud_usage"
   | "web_traffic";
 
@@ -82,7 +83,8 @@ export default function DashboardSidebar({
     activeTab === "accounting_suppliers" ||
     activeTab === "accounting_incomes" ||
     activeTab === "accounting_expenses" ||
-    activeTab === "accounting_invoices";
+    activeTab === "accounting_invoices" ||
+    activeTab === "accounting_banks";
 
   const [isAccountingOpen, setIsAccountingOpen] = useState(true);
 
@@ -553,6 +555,18 @@ export default function DashboardSidebar({
                     <line x1="16" y1="17" x2="8" y2="17" />
                   </svg>
                   <span>Invoices</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onSelectTab("accounting_banks")}
+                  className={`sidebar-submenu-btn ${activeTab === "accounting_banks" ? "active" : ""}`}
+                  title="Banks"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v4M12 14v4M16 14v4" />
+                  </svg>
+                  <span>Banks</span>
                 </button>
 
                 <button

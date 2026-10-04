@@ -560,3 +560,70 @@ body[data-theme="dark"] {
 [data-theme="dark"] [style*="borderBottom: 1px solid #e2e8f0"] {
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
+
+/* Bank Split & Transactions Dark Mode */
+[data-theme="dark"] .bank-row-clickable:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+[data-theme="dark"] .bank-row-active {
+  background-color: rgba(37, 99, 235, 0.15) !important;
+  box-shadow: inset 3px 0 0 #3b82f6 !important;
+}
+
+[data-theme="dark"] .bank-transactions-panel {
+  background: #14171f !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"] .bank-tx-header {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"] .bank-tx-title {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .bank-tx-close-btn {
+  background: #1e2330 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .bank-tx-close-btn:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #f87171 !important;
+}
+
+[data-theme="dark"] .bank-tx-summary-card {
+  background: #1a1e29 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"] .bank-tx-summary-card.credit-card {
+  background: rgba(22, 163, 74, 0.1) !important;
+  border-color: rgba(22, 163, 74, 0.25) !important;
+}
+
+[data-theme="dark"] .bank-tx-summary-card.debit-card {
+  background: rgba(220, 38, 38, 0.1) !important;
+  border-color: rgba(220, 38, 38, 0.25) !important;
+}
+
+[data-theme="dark"] .bank-tx-summary-card.balance-card {
+  background: rgba(37, 99, 235, 0.12) !important;
+  border-color: rgba(37, 99, 235, 0.25) !important;
+}
+
+[data-theme="dark"] .summary-card-val {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .summary-card-val.text-balance {
+  color: #60a5fa !important;
+}
+
+[data-theme="dark"] .bank-tx-balance {
+  color: #f1f5f9 !important;
+}
+

@@ -233,9 +233,9 @@ export default function AccountingSection({
           ) : activeCategory === "finance" && activeFinanceAction === "income" ? (
             <IncomeView user={user} onClose={() => setActiveFinanceAction(null)} getAuthHeaders={getAuthHeaders} />
           ) : activeCategory === "finance" && activeFinanceAction === "expense" ? (
-            <ExpenseView user={user} onClose={() => setActiveFinanceAction(null)} />
+            <ExpenseView user={user} onClose={() => setActiveFinanceAction(null)} getAuthHeaders={getAuthHeaders} />
           ) : activeCategory === "finance" && activeFinanceAction === "bank_transaction" ? (
-            <BankTransactionView user={user} onClose={() => setActiveFinanceAction(null)} />
+            <BankTransactionView user={user} onClose={() => setActiveFinanceAction(null)} getAuthHeaders={getAuthHeaders} />
           ) : (
             <div className="accounting-empty-space" />
           )}

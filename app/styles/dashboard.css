@@ -8846,6 +8846,218 @@
 }
 
 /* ==========================================================================
+   BANK SPLIT LAYOUT & TRANSACTIONS TABLE
+   ========================================================================== */
+.bank-split-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 440px) 1fr;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+@media (max-width: 1100px) {
+  .bank-split-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bank-row-clickable {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.bank-row-clickable:hover {
+  background-color: #f8fafc;
+}
+
+.bank-row-active {
+  background-color: #eff6ff !important;
+  box-shadow: inset 3px 0 0 #2563eb;
+}
+
+.bank-transactions-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.bank-tx-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.bank-tx-title-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bank-tx-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.bank-tx-close-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 0.85rem;
+  transition: all 0.15s ease;
+}
+
+.bank-tx-close-btn:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.bank-tx-summary-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .bank-tx-summary-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.bank-tx-summary-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bank-tx-summary-card.credit-card {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.bank-tx-summary-card.debit-card {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.bank-tx-summary-card.balance-card {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.summary-card-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.summary-card-val {
+  font-size: 0.88rem;
+  font-family: ui-monospace, Menlo, monospace;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.summary-card-val.text-green {
+  color: #16a34a;
+}
+
+.summary-card-val.text-red {
+  color: #dc2626;
+}
+
+.summary-card-val.text-balance {
+  color: #1d4ed8;
+}
+
+.bank-tx-credit {
+  color: #16a34a;
+  font-weight: 600;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.82rem;
+}
+
+.bank-tx-debit {
+  color: #dc2626;
+  font-weight: 600;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.82rem;
+}
+
+.bank-tx-balance {
+  font-weight: 700;
+  font-family: ui-monospace, Menlo, monospace;
+  color: #0f172a;
+  font-size: 0.82rem;
+}
+
+.tx-badge {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.tx-badge-income {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.tx-badge-expense {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.tx-badge-invoice {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.tx-badge-deposit {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.tx-badge-withdrawal {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.tx-badge-transfer {
+  background: #f5f3ff;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
+/* ==========================================================================
    INVOICE NOTIFICATION BANNER
    ========================================================================== */
 .erp-invoice-banner {

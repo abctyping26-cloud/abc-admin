@@ -13,6 +13,7 @@ import SuppliersManager from "./SuppliersManager";
 import IncomesManager from "./IncomesManager";
 import ExpensesManager from "./ExpensesManager";
 import InvoicesManager from "./InvoicesManager";
+import BankManager from "./BankManager";
 import PersonnelManager from "./PersonnelManager";
 import PrintableInvoiceModal, { PrintableInvoiceData } from "./PrintableInvoiceModal";
 import { API_BASE_URL } from "../config/api";
@@ -3717,6 +3718,13 @@ export default function DashboardContent({
         <InvoicesManager
           getAuthHeaders={getAdminAuthHeaders}
           onNavigateTab={onNavigateTab}
+        />
+      )}
+
+      {activeTab === "accounting_banks" && (
+        <BankManager
+          getAuthHeaders={getAdminAuthHeaders}
+          user={user}
         />
       )}
 

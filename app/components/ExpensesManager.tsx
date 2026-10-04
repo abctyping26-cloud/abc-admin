@@ -243,9 +243,20 @@ export default function ExpensesManager({ getAuthHeaders, onNavigateTab }: Expen
         <button
           type="button"
           onClick={() => {
-            setModalError("");
-            setModalExpenseId(`EX/${Math.floor(100 + Math.random() * 900)}`);
-            setIsModalOpen(true);
+            if (typeof window !== "undefined") {
+              try {
+                sessionStorage.setItem("abc_accounting_category", "finance");
+                sessionStorage.setItem("abc_accounting_finance_action", "expense");
+              } catch {}
+              window.dispatchEvent(
+                new CustomEvent("abc_navigate_accounting", {
+                  detail: { category: "finance", financeAction: "expense" },
+                })
+              );
+            }
+            if (onNavigateTab) {
+              onNavigateTab("accounting");
+            }
           }}
           className="capsule-btn-black"
         >

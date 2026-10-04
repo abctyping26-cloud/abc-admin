@@ -60,6 +60,7 @@ const VALID_TABS: SidebarTab[] = [
   "accounting_incomes",
   "accounting_expenses",
   "accounting_invoices",
+  "accounting_banks",
   "cloud_usage",
   "web_traffic",
 ];

@@ -20,6 +20,24 @@ export default function IncomeView({ user, onClose, getAuthHeaders }: IncomeView
   const [payCash, setPayCash] = useState(true);
   const [payBank, setPayBank] = useState(false);
   const [division, setDivision] = useState("-Select One-");
+  const [types, setTypes] = useState<string[]>([
+    "Consulting Fee",
+    "Typing Center Fees",
+    "Translation Services",
+    "Document Clearance",
+    "Miscellaneous Income",
+  ]);
+  const [divisions, setDivisions] = useState<string[]>([
+    "Typing Center",
+    "Corporate Services",
+    "Legal Translation",
+  ]);
+
+  // Quick Add State
+  const [isAddingType, setIsAddingType] = useState(false);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [isAddingDivision, setIsAddingDivision] = useState(false);
+  const [newDivisionName, setNewDivisionName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -228,20 +246,119 @@ export default function IncomeView({ user, onClose, getAuthHeaders }: IncomeView
             <label className="erp-label required" style={{ minWidth: 130 }}>
               Type *
             </label>
-            <select
-              className="erp-select erp-flex-1"
-              style={{ maxWidth: 360 }}
-              value={incomeType}
-              onChange={(e) => setIncomeType(e.target.value)}
-            >
-              <option>-Select One-</option>
-              <option value="Consulting Fee">Consulting Fee</option>
-              <option value="Typing Center Fees">Typing Center Fees</option>
-              <option value="Translation Services">Translation Services</option>
-              <option value="Document Clearance">Document Clearance</option>
-              <option value="Miscellaneous Income">Miscellaneous Income</option>
-            </select>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, maxWidth: 360 }}>
+              <select
+                className="erp-select"
+                style={{ width: "100%" }}
+                value={incomeType}
+                onChange={(e) => {
+                  if (e.target.value === "__add_new__") {
+                    setIsAddingType(true);
+                  } else {
+                    setIncomeType(e.target.value);
+                  }
+                }}
+              >
+                <option value="-Select One-">-Select One-</option>
+                {types.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+                <option value="__add_new__" style={{ fontWeight: 600, color: "#2563eb" }}>
+                  + Add New Type...
+                </option>
+              </select>
+              <button
+                type="button"
+                onClick={() => setIsAddingType(true)}
+                title="Create New Type"
+                style={{
+                  background: "#f1f5f9",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "4px",
+                  padding: "4px 8px",
+                  cursor: "pointer",
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  color: "#0f172a",
+                  lineHeight: 1,
+                }}
+              >
+                +
+              </button>
+            </div>
           </div>
+
+          {/* Inline Quick Add Type Box */}
+          {isAddingType && (
+            <div
+              style={{
+                marginLeft: 130,
+                maxWidth: 360,
+                padding: "10px 12px",
+                background: "#f8fafc",
+                border: "1px solid #cbd5e1",
+                borderRadius: "6px",
+                display: "flex",
+                gap: 6,
+                alignItems: "center",
+              }}
+            >
+              <input
+                type="text"
+                placeholder="New income type name..."
+                className="erp-input"
+                style={{ flex: 1, fontSize: "0.82rem" }}
+                value={newTypeName}
+                onChange={(e) => setNewTypeName(e.target.value)}
+                autoFocus
+              />
+              <button
+                type="button"
+                style={{
+                  background: "#0f172a",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: 4,
+                  padding: "6px 10px",
+                  fontSize: "0.78rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+                onClick={() => {
+                  const val = newTypeName.trim();
+                  if (val) {
+                    if (!types.includes(val)) {
+                      setTypes((prev) => [...prev, val]);
+                    }
+                    setIncomeType(val);
+                    setNewTypeName("");
+                    setIsAddingType(false);
+                  }
+                }}
+              >
+                Add
+              </button>
+              <button
+                type="button"
+                style={{
+                  background: "transparent",
+                  color: "#64748b",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "0.85rem",
+                  padding: "4px 6px",
+                }}
+                onClick={() => {
+                  setIsAddingType(false);
+                  setNewTypeName("");
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           {/* Description */}
           <div className="erp-form-row" style={{ alignItems: "flex-start" }}>
@@ -308,18 +425,135 @@ export default function IncomeView({ user, onClose, getAuthHeaders }: IncomeView
             <label className="erp-label" style={{ minWidth: 130 }}>
               Division
             </label>
-            <select
-              className="erp-select erp-flex-1"
-              style={{ maxWidth: 360 }}
-              value={division}
-              onChange={(e) => setDivision(e.target.value)}
-            >
-              <option>-Select One-</option>
-              <option value="Typing Center">Typing Center</option>
-              <option value="Corporate Services">Corporate Services</option>
-              <option value="Legal Translation">Legal Translation</option>
-            </select>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, maxWidth: 360 }}>
+              <select
+                className="erp-select"
+                style={{ width: "100%" }}
+                value={division}
+                onChange={(e) => {
+                  if (e.target.value === "__add_new__") {
+                    setIsAddingDivision(true);
+                  } else {
+                    setDivision(e.target.value);
+                  }
+                }}
+              >
+                <option value="-Select One-">-Select One-</option>
+                {divisions.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+                <option value="__add_new__" style={{ fontWeight: 600, color: "#2563eb" }}>
+                  + Add New Division...
+                </option>
+              </select>
+              <button
+                type="button"
+                onClick={() => setIsAddingDivision(true)}
+                title="Create New Division"
+                style={{
+                  background: "#f1f5f9",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "4px",
+                  padding: "4px 8px",
+                  cursor: "pointer",
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  color: "#0f172a",
+                  lineHeight: 1,
+                }}
+              >
+                +
+              </button>
+            </div>
           </div>
+
+          {/* Inline Quick Add Division Box */}
+          {isAddingDivision && (
+            <div
+              style={{
+                marginLeft: 130,
+                maxWidth: 360,
+                padding: "10px 12px",
+                background: "#f8fafc",
+                border: "1px solid #cbd5e1",
+                borderRadius: "6px",
+                display: "flex",
+                gap: 6,
+                alignItems: "center",
+              }}
+            >
+              <input
+                type="text"
+                placeholder="New division name..."
+                className="erp-input"
+                style={{ flex: 1, fontSize: "0.82rem" }}
+                value={newDivisionName}
+                onChange={(e) => setNewDivisionName(e.target.value)}
+                autoFocus
+              />
+              <button
+                type="button"
+                style={{
+                  background: "#0f172a",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: 4,
+                  padding: "6px 10px",
+                  fontSize: "0.78rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+                onClick={async () => {
+                  const val = newDivisionName.trim();
+                  if (val) {
+                    if (!divisions.includes(val)) {
+                      setDivisions((prev) => [...prev, val]);
+                    }
+                    setDivision(val);
+                    setNewDivisionName("");
+                    setIsAddingDivision(false);
+
+                    // Persist to MongoDB personnel collection as division type
+                    try {
+                      await fetch(`${API_BASE_URL}/api/v1/admin/accounting/personnel`, {
+                        method: "POST",
+                        headers: {
+                          ...getHeaders(),
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          type: "division",
+                          name: val,
+                        }),
+                      });
+                      window.dispatchEvent(new Event("abc_personnel_updated"));
+                    } catch {}
+                  }
+                }}
+              >
+                Add
+              </button>
+              <button
+                type="button"
+                style={{
+                  background: "transparent",
+                  color: "#64748b",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "0.85rem",
+                  padding: "4px 6px",
+                }}
+                onClick={() => {
+                  setIsAddingDivision(false);
+                  setNewDivisionName("");
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
         </div>
 
         {/* BOTTOM METALLIC ACTION TOOLBAR (Save, Edit, Delete, Reset, Close) */}
