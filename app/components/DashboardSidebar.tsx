@@ -12,6 +12,10 @@ export type SidebarTab =
   | "website_edit"
   | "services"
   | "accounting"
+  | "accounting_suppliers"
+  | "accounting_incomes"
+  | "accounting_expenses"
+  | "accounting_invoices"
   | "cloud_usage"
   | "web_traffic";
 
@@ -42,6 +46,21 @@ export default function DashboardSidebar({
 }: DashboardSidebarProps) {
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const projectSelectorRef = useRef<HTMLDivElement>(null);
+
+  const isAccountingSectionActive =
+    activeTab === "accounting" ||
+    activeTab === "accounting_suppliers" ||
+    activeTab === "accounting_incomes" ||
+    activeTab === "accounting_expenses" ||
+    activeTab === "accounting_invoices";
+
+  const [isAccountingOpen, setIsAccountingOpen] = useState(true);
+
+  useEffect(() => {
+    if (isAccountingSectionActive) {
+      setIsAccountingOpen(true);
+    }
+  }, [isAccountingSectionActive]);
 
   // Close dropdown when clicking outside or pressing Escape
   useEffect(() => {
@@ -376,34 +395,142 @@ export default function DashboardSidebar({
           )}
         </button>
 
-        {/* Accounting */}
-        <button
-          type="button"
-          onClick={() => onSelectTab("accounting")}
-          className={`sidebar-menu-btn ${activeTab === "accounting" ? "active" : ""}`}
-        >
-          <div className="sidebar-menu-left">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+        {/* Accounting Group with Sub-sections */}
+        <div className="sidebar-menu-group">
+          <button
+            type="button"
+            onClick={() => {
+              onSelectTab("accounting");
+              setIsAccountingOpen(true);
+            }}
+            className={`sidebar-menu-btn ${isAccountingSectionActive ? "active" : ""}`}
+            title="Accounting"
+          >
+            <div className="sidebar-menu-left">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect width="16" height="20" x="4" y="2" rx="2" />
+                <line x1="8" x2="16" y1="6" y2="6" />
+                <line x1="16" x2="16" y1="14" />
+                <path d="M16 10h.01" />
+                <path d="M12 10h.01" />
+                <path d="M8 10h.01" />
+                <path d="M12 14h.01" />
+                <path d="M8 14h.01" />
+                <path d="M12 18h.01" />
+                <path d="M8 18h.01" />
+              </svg>
+              <span>Accounting</span>
+            </div>
+            <span
+              className="sidebar-chevron-hitbox"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsAccountingOpen((prev) => !prev);
+              }}
+              title={isAccountingOpen ? "Collapse Submenu" : "Expand Submenu"}
+              style={{ display: "inline-flex", alignItems: "center", padding: "4px" }}
             >
-              <rect width="16" height="20" x="4" y="2" rx="2" />
-              <line x1="8" x2="16" y1="6" y2="6" />
-              <line x1="16" x2="16" y1="14" />
-              <path d="M16 10h.01" />
-              <path d="M12 10h.01" />
-              <path d="M8 10h.01" />
-              <path d="M12 14h.01" />
-              <path d="M8 14h.01" />
-              <path d="M12 18h.01" />
-              <path d="M8 18h.01" />
-            </svg>
-            <span>Accounting</span>
-          </div>
-        </button>
+              <svg
+                className="sidebar-chevron"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{
+                  width: 14,
+                  height: 14,
+                  transform: isAccountingOpen ? "rotate(90deg)" : "rotate(0deg)",
+                }}
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </span>
+          </button>
+
+          {/* Sub-sections: Suppliers, Incomes, Expenses, Invoices, Accounting Hub */}
+          {isAccountingOpen && (
+            <div className="sidebar-submenu">
+              <button
+                type="button"
+                onClick={() => onSelectTab("accounting_suppliers")}
+                className={`sidebar-submenu-btn ${activeTab === "accounting_suppliers" ? "active" : ""}`}
+                title="Suppliers"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                <span>Suppliers</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab("accounting_incomes")}
+                className={`sidebar-submenu-btn ${activeTab === "accounting_incomes" ? "active" : ""}`}
+                title="Incomes"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                  <polyline points="17 6 23 6 23 12" />
+                </svg>
+                <span>Incomes</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab("accounting_expenses")}
+                className={`sidebar-submenu-btn ${activeTab === "accounting_expenses" ? "active" : ""}`}
+                title="Expenses"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+                  <polyline points="17 18 23 18 23 12" />
+                </svg>
+                <span>Expenses</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab("accounting_invoices")}
+                className={`sidebar-submenu-btn ${activeTab === "accounting_invoices" ? "active" : ""}`}
+                title="Invoices"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+                <span>Invoices</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab("accounting")}
+                className={`sidebar-submenu-btn ${activeTab === "accounting" ? "active" : ""}`}
+                title="Accounting Hub"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="7" height="9" x="3" y="3" rx="1" />
+                  <rect width="7" height="5" x="14" y="3" rx="1" />
+                  <rect width="7" height="9" x="14" y="12" rx="1" />
+                  <rect width="7" height="5" x="3" y="16" rx="1" />
+                </svg>
+                <span>Accounting Hub</span>
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Cloud & Infrastructure Usage */}
         <button

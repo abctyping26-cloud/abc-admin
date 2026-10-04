@@ -9,6 +9,10 @@ import WhatsAppEnquiriesManager from "./WhatsAppEnquiriesManager";
 import CloudUsageSection from "./CloudUsageSection";
 import WebTrafficSection from "./WebTrafficSection";
 import AccountingSection from "./AccountingSection";
+import SuppliersManager from "./SuppliersManager";
+import IncomesManager from "./IncomesManager";
+import ExpensesManager from "./ExpensesManager";
+import InvoicesManager from "./InvoicesManager";
 import PersonnelManager from "./PersonnelManager";
 import PrintableInvoiceModal, { PrintableInvoiceData } from "./PrintableInvoiceModal";
 import { API_BASE_URL } from "../config/api";
@@ -2978,6 +2982,37 @@ export default function DashboardContent({
           ------------------------------------------------------------- */}
       {activeTab === "accounting" && (
         <AccountingSection user={user} />
+      )}
+
+      {/* -------------------------------------------------------------
+          TAB: ACCOUNTING SUB-SECTIONS (Suppliers, Incomes, Expenses, Invoices)
+          ------------------------------------------------------------- */}
+      {activeTab === "accounting_suppliers" && (
+        <SuppliersManager
+          getAuthHeaders={getAdminAuthHeaders}
+          onNavigateTab={onNavigateTab}
+        />
+      )}
+
+      {activeTab === "accounting_incomes" && (
+        <IncomesManager
+          getAuthHeaders={getAdminAuthHeaders}
+          onNavigateTab={onNavigateTab}
+        />
+      )}
+
+      {activeTab === "accounting_expenses" && (
+        <ExpensesManager
+          getAuthHeaders={getAdminAuthHeaders}
+          onNavigateTab={onNavigateTab}
+        />
+      )}
+
+      {activeTab === "accounting_invoices" && (
+        <InvoicesManager
+          getAuthHeaders={getAdminAuthHeaders}
+          onNavigateTab={onNavigateTab}
+        />
       )}
 
       {/* -------------------------------------------------------------

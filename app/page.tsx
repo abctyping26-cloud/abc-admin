@@ -56,7 +56,12 @@ const VALID_TABS: SidebarTab[] = [
   "enquiries",
   "whatsapp_enquiries",
   "accounting",
+  "accounting_suppliers",
+  "accounting_incomes",
+  "accounting_expenses",
+  "accounting_invoices",
   "cloud_usage",
+  "web_traffic",
 ];
 
 function isValidTab(tab: unknown): tab is SidebarTab {
