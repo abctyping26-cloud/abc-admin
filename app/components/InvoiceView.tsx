@@ -74,6 +74,19 @@ export interface InvoiceViewProps {
 }
 
 export default function InvoiceView({ user, onClose }: InvoiceViewProps = {}) {
+  let effectiveUser = user;
+  if (!effectiveUser) {
+    try {
+      const stored = typeof window !== "undefined" ? localStorage.getItem("abc_admin_user") : null;
+      if (stored) effectiveUser = JSON.parse(stored);
+    } catch {}
+  }
+  const isMaster =
+    effectiveUser?.role === "master_admin" ||
+    effectiveUser?.role === "superadmin" ||
+    effectiveUser?.identifier === "masteradmin@abc.com";
+  const canDeleteData = isMaster || (effectiveUser as any)?.canDeleteData !== false;
+
   // Sales State
   const [customer, setCustomer] = useState("");
   const [customerType, setCustomerType] = useState("walk_in");
@@ -868,6 +881,10 @@ export default function InvoiceView({ user, onClose }: InvoiceViewProps = {}) {
 
   // Permanently delete invoice from MongoDB
   const handleDeleteInvoice = async (id: string, invNum: string) => {
+    if (!canDeleteData) {
+      alert("Permission denied: Your worker admin account does not have permission to delete data.");
+      return;
+    }
     if (!confirm(`Are you sure you want to permanently delete Invoice #${invNum} from MongoDB?`)) {
       return;
     }

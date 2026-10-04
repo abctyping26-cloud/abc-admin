@@ -68,45 +68,80 @@ function isValidTab(tab: unknown): tab is SidebarTab {
   return typeof tab === "string" && VALID_TABS.includes(tab as SidebarTab);
 }
 
+function isTabAllowedForUser(tab: SidebarTab, user: any, isMaster: boolean): boolean {
+  if (isMaster) return true;
+  if (tab === "worker_admins") return false;
+  const roles: string[] = user?.assignedRoles;
+  if (!roles || roles.length === 0) {
+    return ["clients", "enquiries", "whatsapp_enquiries", "accounting", "overview"].includes(tab);
+  }
+  if (tab === "accounting" || tab.startsWith("accounting_")) {
+    return roles.includes("accounting");
+  }
+  if (tab === "cloud_usage" || tab === "web_traffic") {
+    return roles.includes("analytics") || roles.includes("cloud_usage") || roles.includes("web_traffic");
+  }
+  if (tab === "website_edit" || tab === "services") {
+    return roles.includes("website_edit");
+  }
+  if (tab === "overview") {
+    return roles.includes("overview");
+  }
+  return roles.includes(tab);
+}
+
+function getFirstAllowedTab(user: any, isMaster: boolean): SidebarTab {
+  if (isMaster) return "overview";
+  const roles: string[] = user?.assignedRoles || [];
+  if (roles.length === 0) {
+    return "enquiries";
+  }
+  if (roles.includes("accounting")) return "accounting";
+  if (roles.includes("clients")) return "clients";
+  if (roles.includes("enquiries")) return "enquiries";
+  if (roles.includes("whatsapp_enquiries")) return "whatsapp_enquiries";
+  if (roles.includes("website_edit")) return "website_edit";
+  if (roles.includes("analytics") || roles.includes("cloud_usage")) return "cloud_usage";
+  if (roles.includes("web_traffic")) return "web_traffic";
+  if (roles.includes("overview")) return "overview";
+  return "enquiries";
+}
+
 function resolveInitialTab(): SidebarTab {
   if (typeof window === "undefined") return "overview";
 
   try {
-    let isWorkerAdmin = false;
+    let isMasterAdmin = true;
+    let u: any = null;
     const userStr = localStorage.getItem("abc_admin_user");
     if (userStr) {
-      const u = JSON.parse(userStr);
-      const isMasterAdmin =
+      u = JSON.parse(userStr);
+      isMasterAdmin =
         u?.role === "master_admin" ||
         u?.role === "superadmin" ||
         u?.identifier === "masteradmin@abc.com";
-      isWorkerAdmin = !isMasterAdmin;
     }
 
     // 1. Check URL query param (?tab=...)
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get("tab");
     if (tabParam === "services") {
-      return "website_edit";
-    }
-    if (isValidTab(tabParam)) {
-      if (tabParam === "worker_admins" && isWorkerAdmin) {
-        return "enquiries";
+      if (isTabAllowedForUser("website_edit", u, isMasterAdmin)) {
+        return "website_edit";
       }
+    }
+    if (isValidTab(tabParam) && isTabAllowedForUser(tabParam, u, isMasterAdmin)) {
       return tabParam;
     }
 
     // 2. Check localStorage
     const savedTab = localStorage.getItem("abc_admin_active_tab");
-    if (isValidTab(savedTab)) {
-      if (savedTab === "worker_admins" && isWorkerAdmin) {
-        return "enquiries";
-      }
+    if (isValidTab(savedTab) && isTabAllowedForUser(savedTab, u, isMasterAdmin)) {
       return savedTab;
     }
 
-    // 3. Defaults based on role
-    return isWorkerAdmin ? "enquiries" : "overview";
+    // 3. Defaults based on allowed roles
+    return getFirstAllowedTab(u, isMasterAdmin);
   } catch {
     return "overview";
   }
@@ -167,7 +202,10 @@ export default function Home() {
 
   const handleTabChange = React.useCallback(
     (tab: SidebarTab) => {
-      const targetTab = !isMaster && tab === "worker_admins" ? "enquiries" : tab;
+      let targetTab = tab;
+      if (!isMaster && !isTabAllowedForUser(tab, user, false)) {
+        targetTab = getFirstAllowedTab(user, false);
+      }
       setActiveTab(targetTab);
       setIsSidebarExpanded(false);
 
@@ -182,7 +220,7 @@ export default function Home() {
         // Ignore storage/history errors
       }
     },
-    [isMaster]
+    [isMaster, user]
   );
 
   const handleProjectChange = React.useCallback((project: AdminProject) => {
@@ -201,11 +239,12 @@ export default function Home() {
     }
   }, []);
 
-  // Guard against worker admin landing on master-only worker_admins tab
+  // Guard against worker admin landing on unauthorized tab
   useEffect(() => {
     if (!user) return;
-    if (!isMaster && activeTab === "worker_admins") {
-      queueMicrotask(() => handleTabChange("enquiries"));
+    if (!isTabAllowedForUser(activeTab, user, isMaster)) {
+      const fallback = getFirstAllowedTab(user, isMaster);
+      queueMicrotask(() => handleTabChange(fallback));
     }
   }, [user, isMaster, activeTab, handleTabChange]);
 
@@ -234,7 +273,9 @@ export default function Home() {
         setSelectedProject(projectParam);
       }
       if (isValidTab(tabParam)) {
-        const targetTab = !isMaster && tabParam === "worker_admins" ? "enquiries" : tabParam;
+        const targetTab = !isMaster && !isTabAllowedForUser(tabParam, user, false)
+          ? getFirstAllowedTab(user, false)
+          : tabParam;
         setActiveTab(targetTab);
         try {
           localStorage.setItem("abc_admin_active_tab", targetTab);
@@ -243,7 +284,7 @@ export default function Home() {
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [isMaster]);
+  }, [isMaster, user]);
 
   const handleSignOut = () => {
     localStorage.removeItem("abc_admin_token");
@@ -308,6 +349,7 @@ export default function Home() {
           selectedProject={selectedProject}
           onSelectProject={handleProjectChange}
           isMaster={isMaster}
+          user={user}
           pendingEnquiriesCount={pendingEnquiriesCount}
           pendingWhatsAppCount={pendingWhatsAppCount}
           isExpanded={isSidebarExpanded}

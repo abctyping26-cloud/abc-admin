@@ -50,6 +50,8 @@ interface ClientsManagerProps {
     identifier?: string;
     role?: string;
     name?: string;
+    canDeleteData?: boolean;
+    assignedRoles?: string[];
   } | null;
   isMaster: boolean;
 }
@@ -141,6 +143,7 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
   const canDeleteClient = (client: ClientItem | null): boolean => {
     if (!client) return false;
     if (isMaster) return true;
+    if (user?.canDeleteData === false) return false;
     const creatorId = client.createdBy?._id || client.createdBy?.id;
     if (creatorId && user?.id && creatorId.toString() === user.id.toString()) return true;
     return false;
@@ -552,6 +555,10 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
   // Delete file from Cloudinary and MongoDB
   const handleDeleteFile = async (fileId: string) => {
     if (!selectedClient) return;
+    if (!isMaster && user?.canDeleteData === false) {
+      alert("Permission denied: Your worker admin account does not have permission to delete data.");
+      return;
+    }
     if (!window.confirm("Are you sure you want to permanently delete this file from cloud storage?")) {
       return;
     }
@@ -628,7 +635,11 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
 
     const target = clients.find((c) => c.id === clientId) || selectedClient;
     if (!canDeleteClient(target)) {
-      alert("Only the creator or a Master Admin has permission to delete this client record.");
+      if (!isMaster && user?.canDeleteData === false) {
+        alert("Permission denied: Your worker admin account does not have permission to delete data.");
+      } else {
+        alert("Only the creator or a Master Admin has permission to delete this client record.");
+      }
       return;
     }
 
@@ -718,6 +729,8 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
                 title={
                   canDeleteClient(selectedClient)
                     ? "Delete client and all Cloudinary files"
+                    : !isMaster && user?.canDeleteData === false
+                    ? "Worker account does not have permission to delete data"
                     : "Only the creator or a Master Admin can delete this client"
                 }
                 style={{
@@ -932,6 +945,8 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
                   title={
                     canDeleteClient(selectedClient)
                       ? "Permanently delete this client"
+                      : !isMaster && user?.canDeleteData === false
+                      ? "Worker account does not have permission to delete data"
                       : "Only the creator or a Master Admin can delete this client"
                   }
                   style={{
@@ -1052,17 +1067,19 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
                             </svg>
                             <span>View</span>
                           </a>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteFile(file._id || file.public_id)}
-                            className="file-delete-btn"
-                            title="Permanently delete from Cloudinary & Database"
-                          >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            </svg>
-                          </button>
+                          {(isMaster || user?.canDeleteData !== false) && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteFile(file._id || file.public_id)}
+                              className="file-delete-btn"
+                              title="Permanently delete from Cloudinary & Database"
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}

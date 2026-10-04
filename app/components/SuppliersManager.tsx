@@ -25,6 +25,17 @@ interface SuppliersManagerProps {
 }
 
 export default function SuppliersManager({ getAuthHeaders, onNavigateTab }: SuppliersManagerProps) {
+  let user: any = null;
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem("abc_admin_user") : null;
+    if (raw) user = JSON.parse(raw);
+  } catch {}
+  const isMaster =
+    user?.role === "master_admin" ||
+    user?.role === "superadmin" ||
+    user?.identifier === "masteradmin@abc.com";
+  const canDeleteData = isMaster || user?.canDeleteData !== false;
+
   const [suppliers, setSuppliers] = useState<SupplierItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -143,6 +154,10 @@ export default function SuppliersManager({ getAuthHeaders, onNavigateTab }: Supp
 
   // Delete Supplier from MongoDB
   const handleDeleteSupplier = async (id: string, name: string) => {
+    if (!canDeleteData) {
+      alert("Permission denied: Your worker admin account does not have permission to delete data.");
+      return;
+    }
     if (!confirm(`Are you sure you want to delete supplier "${name}" from MongoDB?`)) {
       return;
     }
@@ -159,7 +174,8 @@ export default function SuppliersManager({ getAuthHeaders, onNavigateTab }: Supp
         }
         window.dispatchEvent(new Event("abc_personnel_updated"));
       } else {
-        alert("Failed to delete supplier from database.");
+        const errJson = await res.json().catch(() => null);
+        alert(errJson?.message || "Failed to delete supplier from database.");
       }
     } catch (err) {
       console.error("Error deleting supplier:", err);
@@ -414,14 +430,16 @@ export default function SuppliersManager({ getAuthHeaders, onNavigateTab }: Supp
                         >
                           👁️
                         </button>
-                        <button
-                          type="button"
-                          className="erp-mini-btn delete"
-                          onClick={() => handleDeleteSupplier(id, sup.name)}
-                          title="Delete Supplier from Database"
-                        >
-                          🗑️
-                        </button>
+                        {canDeleteData && (
+                          <button
+                            type="button"
+                            className="erp-mini-btn delete"
+                            onClick={() => handleDeleteSupplier(id, sup.name)}
+                            title="Delete Supplier from Database"
+                          >
+                            🗑️
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

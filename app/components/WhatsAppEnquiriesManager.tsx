@@ -80,8 +80,23 @@ export interface QuickReplyItem {
 }
 
 export default function WhatsAppEnquiriesManager({
+  user,
   onPendingCountChange,
 }: WhatsAppEnquiriesManagerProps) {
+  const isMaster =
+    user?.role === "master_admin" ||
+    user?.role === "superadmin" ||
+    user?.identifier === "masteradmin@abc.com";
+  const canDeleteData = isMaster || user?.canDeleteData !== false;
+
+  const getAuthHeaders = useCallback(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("abc_admin_token") : null;
+    return {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  }, []);
+
   const [conversations, setConversations] = useState<WhatsAppConversation[]>([]);
   const [counts, setCounts] = useState<{ total: number; pending: number; responded: number }>({
     total: 0,
@@ -322,6 +337,10 @@ export default function WhatsAppEnquiriesManager({
 
   // Delete Conversation Thread
   const handleDeleteConversation = async (phone: string) => {
+    if (!canDeleteData) {
+      alert("Permission denied: Your worker admin account does not have permission to delete data.");
+      return;
+    }
     if (!confirm(`Are you sure you want to delete all messages with +${phone}? This action cannot be undone.`)) {
       return;
     }
@@ -330,6 +349,7 @@ export default function WhatsAppEnquiriesManager({
       const clean = phone.replace(/\D/g, "");
       const res = await fetch(`${API_BASE_URL}/api/v1/whatsapp/conversations/${clean}`, {
         method: "DELETE",
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         if (selectedPhone === phone) {
@@ -337,6 +357,9 @@ export default function WhatsAppEnquiriesManager({
           setActiveChat(null);
         }
         await fetchConversations();
+      } else {
+        const errJson = await res.json().catch(() => null);
+        alert(errJson?.message || "Failed to delete conversation.");
       }
     } catch (err) {
       console.error("Failed to delete conversation:", err);
@@ -451,13 +474,21 @@ export default function WhatsAppEnquiriesManager({
 
   // Delete quick reply from MongoDB
   const handleDeleteQuickReply = async (id: string, title: string) => {
+    if (!canDeleteData) {
+      alert("Permission denied: Your worker admin account does not have permission to delete data.");
+      return;
+    }
     if (!confirm(`Are you sure you want to delete the quick reply "${title}"?`)) return;
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/whatsapp/quick-replies/${id}`, {
         method: "DELETE",
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         await fetchQuickReplies();
+      } else {
+        const errJson = await res.json().catch(() => null);
+        alert(errJson?.message || "Failed to delete quick reply.");
       }
     } catch (err) {
       console.error("Failed to delete quick reply:", err);
@@ -930,14 +961,16 @@ export default function WhatsAppEnquiriesManager({
                                 >
                                   Edit
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteQuickReply(qr._id, qr.title)}
-                                  className="wa-qr-action-btn delete"
-                                  title="Delete quick reply"
-                                >
-                                  Delete
-                                </button>
+                                {canDeleteData && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteQuickReply(qr._id, qr.title)}
+                                    className="wa-qr-action-btn delete"
+                                    title="Delete quick reply"
+                                  >
+                                    Delete
+                                  </button>
+                                )}
                               </div>
                             </div>
                             <p className="wa-qr-item-text">{qr.text}</p>

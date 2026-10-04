@@ -51,6 +51,17 @@ export default function InvoicesManager({
   onNavigateTab,
   onOpenInvoiceEditor,
 }: InvoicesManagerProps) {
+  let user: any = null;
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem("abc_admin_user") : null;
+    if (raw) user = JSON.parse(raw);
+  } catch {}
+  const isMaster =
+    user?.role === "master_admin" ||
+    user?.role === "superadmin" ||
+    user?.identifier === "masteradmin@abc.com";
+  const canDeleteData = isMaster || user?.canDeleteData !== false;
+
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -102,6 +113,10 @@ export default function InvoicesManager({
 
   // Delete Invoice from MongoDB
   const handleDeleteInvoice = async (id: string, num: string) => {
+    if (!canDeleteData) {
+      alert("Permission denied: Your worker admin account does not have permission to delete data.");
+      return;
+    }
     if (!confirm(`Are you sure you want to permanently delete Invoice #${num} from MongoDB?`)) {
       return;
     }
@@ -115,7 +130,8 @@ export default function InvoicesManager({
         setInvoices((prev) => prev.filter((i) => (i.id || i._id) !== id));
         window.dispatchEvent(new Event("abc_invoice_saved"));
       } else {
-        alert("Failed to delete invoice.");
+        const errJson = await res.json().catch(() => null);
+        alert(errJson?.message || "Failed to delete invoice.");
       }
     } catch (err) {
       console.error("Error deleting invoice:", err);
@@ -434,14 +450,16 @@ export default function InvoicesManager({
                         >
                           🖨️
                         </button>
-                        <button
-                          type="button"
-                          className="erp-mini-btn delete"
-                          onClick={() => handleDeleteInvoice(id, inv.invoiceNo)}
-                          title="Delete Invoice"
-                        >
-                          🗑️
-                        </button>
+                        {canDeleteData && (
+                          <button
+                            type="button"
+                            className="erp-mini-btn delete"
+                            onClick={() => handleDeleteInvoice(id, inv.invoiceNo)}
+                            title="Delete Invoice"
+                          >
+                            🗑️
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

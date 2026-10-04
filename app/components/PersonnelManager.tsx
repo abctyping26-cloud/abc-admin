@@ -21,6 +21,17 @@ interface PersonnelManagerProps {
 }
 
 export default function PersonnelManager({ getAuthHeaders }: PersonnelManagerProps) {
+  let user: any = null;
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem("abc_admin_user") : null;
+    if (raw) user = JSON.parse(raw);
+  } catch {}
+  const isMaster =
+    user?.role === "master_admin" ||
+    user?.role === "superadmin" ||
+    user?.identifier === "masteradmin@abc.com";
+  const canDeleteData = isMaster || user?.canDeleteData !== false;
+
   const [personnel, setPersonnel] = useState<PersonnelItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -121,6 +132,10 @@ export default function PersonnelManager({ getAuthHeaders }: PersonnelManagerPro
 
   // Delete Personnel from MongoDB
   const handleDelete = async (id: string, name: string) => {
+    if (!canDeleteData) {
+      alert("Permission denied: Your worker admin account does not have permission to delete data.");
+      return;
+    }
     if (!window.confirm(`Are you sure you want to delete "${name}" from the database?`)) {
       return;
     }
@@ -327,15 +342,17 @@ export default function PersonnelManager({ getAuthHeaders }: PersonnelManagerPro
                     </span>
                   </td>
                   <td style={{ textAlign: "right" }}>
-                    <button
-                      type="button"
-                      className="personnel-delete-btn"
-                      onClick={() => handleDelete(item.id || item._id || "", item.name)}
-                      disabled={deletingId === (item.id || item._id)}
-                      title="Delete from database"
-                    >
-                      {deletingId === (item.id || item._id) ? "..." : "Delete"}
-                    </button>
+                    {canDeleteData && (
+                      <button
+                        type="button"
+                        className="personnel-delete-btn"
+                        onClick={() => handleDelete(item.id || item._id || "", item.name)}
+                        disabled={deletingId === (item.id || item._id)}
+                        title="Delete from database"
+                      >
+                        {deletingId === (item.id || item._id) ? "..." : "Delete"}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

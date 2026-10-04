@@ -24,6 +24,17 @@ interface IncomesManagerProps {
 }
 
 export default function IncomesManager({ getAuthHeaders, onNavigateTab }: IncomesManagerProps) {
+  let user: any = null;
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem("abc_admin_user") : null;
+    if (raw) user = JSON.parse(raw);
+  } catch {}
+  const isMaster =
+    user?.role === "master_admin" ||
+    user?.role === "superadmin" ||
+    user?.identifier === "masteradmin@abc.com";
+  const canDeleteData = isMaster || user?.canDeleteData !== false;
+
   const [incomes, setIncomes] = useState<IncomeRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -141,6 +152,10 @@ export default function IncomesManager({ getAuthHeaders, onNavigateTab }: Income
 
   // Delete Income from MongoDB
   const handleDeleteIncome = async (id: string, code: string) => {
+    if (!canDeleteData) {
+      alert("Permission denied: Your worker admin account does not have permission to delete data.");
+      return;
+    }
     if (!confirm(`Are you sure you want to permanently delete Income #${code} from MongoDB?`)) {
       return;
     }
@@ -154,7 +169,8 @@ export default function IncomesManager({ getAuthHeaders, onNavigateTab }: Income
         setIncomes((prev) => prev.filter((inc) => (inc.id || inc._id) !== id));
         window.dispatchEvent(new Event("abc_income_updated"));
       } else {
-        alert("Failed to delete income record.");
+        const errJson = await res.json().catch(() => null);
+        alert(errJson?.message || "Failed to delete income record.");
       }
     } catch (err) {
       console.error("Error deleting income:", err);
@@ -426,14 +442,16 @@ export default function IncomesManager({ getAuthHeaders, onNavigateTab }: Income
                       </span>
                     </td>
                     <td style={{ textAlign: "right" }}>
-                      <button
-                        type="button"
-                        className="erp-mini-btn delete"
-                        onClick={() => handleDeleteIncome(id, inc.incomeId)}
-                        title="Delete Income Record"
-                      >
-                        🗑️
-                      </button>
+                      {canDeleteData && (
+                        <button
+                          type="button"
+                          className="erp-mini-btn delete"
+                          onClick={() => handleDeleteIncome(id, inc.incomeId)}
+                          title="Delete Income Record"
+                        >
+                          🗑️
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

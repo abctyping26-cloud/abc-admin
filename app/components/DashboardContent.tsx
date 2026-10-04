@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import type { SidebarTab } from "./DashboardSidebar";
 import DatabaseLoadingOverlay from "./DatabaseLoadingOverlay";
 import ClientsManager from "./ClientsManager";
@@ -17,6 +17,59 @@ import PersonnelManager from "./PersonnelManager";
 import PrintableInvoiceModal, { PrintableInvoiceData } from "./PrintableInvoiceModal";
 import { API_BASE_URL } from "../config/api";
 
+export interface AdminModuleOption {
+  id: string;
+  label: string;
+  shortLabel: string;
+  description: string;
+  icon: string;
+}
+
+export const AVAILABLE_ADMIN_MODULES: AdminModuleOption[] = [
+  {
+    id: "accounting",
+    label: "Accounting",
+    shortLabel: "Accounting",
+    description: "Invoices, Incomes, Expenses, Suppliers & Accounting Hub",
+    icon: "💼",
+  },
+  {
+    id: "clients",
+    label: "Clients & Files",
+    shortLabel: "Clients",
+    description: "Commercial clients directory and file management",
+    icon: "👥",
+  },
+  {
+    id: "enquiries",
+    label: "Website Enquiries",
+    shortLabel: "Enquiries",
+    description: "Online form leads, opt-in assignment & customer replies",
+    icon: "✉️",
+  },
+  {
+    id: "whatsapp_enquiries",
+    label: "WhatsApp CRM",
+    shortLabel: "WhatsApp",
+    description: "Live customer chat messaging & quick responses",
+    icon: "💬",
+  },
+  {
+    id: "website_edit",
+    label: "Website Content",
+    shortLabel: "Web Content",
+    description: "Services catalogue, documentation checklist & marquee",
+    icon: "🌐",
+  },
+  {
+    id: "analytics",
+    label: "Traffic & Analytics",
+    shortLabel: "Analytics",
+    description: "Google Analytics 4 visitor stats and cloud infrastructure usage",
+    icon: "📊",
+  },
+];
+
 export interface WorkerAdminUser {
   id: string;
   identifier: string;
@@ -26,13 +79,15 @@ export interface WorkerAdminUser {
   phoneNumber?: string;
   location?: string;
   deviceInfo?: string;
-  role?: "worker_admin" | "admin";
+  role?: "worker_admin" | "admin" | "master_admin" | "superadmin";
   profileCompleted: boolean;
   isFirstLogin?: boolean;
   avatarUrl?: string;
   createdAt?: string;
   lastLoginAt?: string;
   status: "active" | "inactive";
+  assignedRoles?: string[];
+  canDeleteData?: boolean;
 }
 
 export interface EnquiryItem {
@@ -71,6 +126,8 @@ interface DashboardContentProps {
     deviceInfo?: string;
     profileCompleted?: boolean;
     isFirstLogin?: boolean;
+    assignedRoles?: string[];
+    canDeleteData?: boolean;
   } | null;
   onPendingCountChange?: (count: number) => void;
   onPendingWhatsAppCountChange?: (count: number) => void;
@@ -232,6 +289,7 @@ export default function DashboardContent({
     user?.role === "master_admin" ||
     user?.role === "superadmin" ||
     user?.identifier === "masteradmin@abc.com";
+  const canDeleteData = isMaster || user?.canDeleteData !== false;
 
   // Real MongoDB Worker Admins state
   const [workerAdmins, setWorkerAdmins] = useState<WorkerAdminUser[]>([]);
@@ -274,6 +332,7 @@ export default function DashboardContent({
   }, [user]);
 
   const handleOpenWorkerAdminDetail = (admin: WorkerAdminUser) => {
+    setIsDetailRolesPopoverOpen(false);
     setSelectedWorkerAdminForDetail(admin);
     fetchWorkerInvoices(admin);
   };
@@ -353,6 +412,123 @@ export default function DashboardContent({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [newAdminPassword, setNewAdminPassword] = useState("");
+  const [newAdminRoles, setNewAdminRoles] = useState<string[]>([
+    "accounting",
+    "enquiries",
+    "whatsapp_enquiries",
+    "clients",
+  ]);
+  const [newAdminCanDelete, setNewAdminCanDelete] = useState<boolean>(false);
+
+  // Edit Roles & Permissions Modal state
+  const [editingWorkerAdmin, setEditingWorkerAdmin] = useState<WorkerAdminUser | null>(null);
+  const [editAdminRoles, setEditAdminRoles] = useState<string[]>([]);
+  const [editAdminCanDelete, setEditAdminCanDelete] = useState<boolean>(false);
+  const [isUpdatingPermissions, setIsUpdatingPermissions] = useState(false);
+  const [permissionsError, setPermissionsError] = useState("");
+  const [permissionsSuccess, setPermissionsSuccess] = useState("");
+  const [isDeletingWorker, setIsDeletingWorker] = useState(false);
+
+  // Detail Modal Roles Popover state
+  const detailRolesPopoverRef = useRef<HTMLDivElement>(null);
+  const [isDetailRolesPopoverOpen, setIsDetailRolesPopoverOpen] = useState(false);
+  const [detailRolesDraft, setDetailRolesDraft] = useState<string[]>([]);
+  const [detailCanDeleteDraft, setDetailCanDeleteDraft] = useState<boolean>(false);
+  const [isSavingDetailRoles, setIsSavingDetailRoles] = useState(false);
+  const [detailSaveSuccessMsg, setDetailSaveSuccessMsg] = useState("");
+
+  const handleToggleDetailRolesPopover = () => {
+    if (!isDetailRolesPopoverOpen && selectedWorkerAdminForDetail) {
+      setDetailRolesDraft(selectedWorkerAdminForDetail.assignedRoles || []);
+      setDetailCanDeleteDraft(Boolean(selectedWorkerAdminForDetail.canDeleteData));
+      setDetailSaveSuccessMsg("");
+    }
+    setIsDetailRolesPopoverOpen((prev) => !prev);
+  };
+
+  useEffect(() => {
+    if (!isDetailRolesPopoverOpen) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (
+        detailRolesPopoverRef.current &&
+        !detailRolesPopoverRef.current.contains(e.target as Node)
+      ) {
+        setIsDetailRolesPopoverOpen(false);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsDetailRolesPopoverOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [isDetailRolesPopoverOpen]);
+
+  const handleSaveDetailRoles = async () => {
+    if (!selectedWorkerAdminForDetail) return;
+    setIsSavingDetailRoles(true);
+    setDetailSaveSuccessMsg("");
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/admin/workers/${selectedWorkerAdminForDetail.id}/permissions`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAdminAuthHeaders(),
+          },
+          body: JSON.stringify({
+            assignedRoles: detailRolesDraft,
+            canDeleteData: detailCanDeleteDraft,
+          }),
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to update roles & permissions.");
+      }
+
+      const updatedRoles = detailRolesDraft;
+      const updatedCanDelete = detailCanDeleteDraft;
+
+      setSelectedWorkerAdminForDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              assignedRoles: updatedRoles,
+              canDeleteData: updatedCanDelete,
+            }
+          : null
+      );
+
+      setWorkerAdmins((prev) =>
+        prev.map((w) =>
+          w.id === selectedWorkerAdminForDetail.id
+            ? {
+                ...w,
+                assignedRoles: updatedRoles,
+                canDeleteData: updatedCanDelete,
+              }
+            : w
+        )
+      );
+
+      setDetailSaveSuccessMsg("Saved!");
+      setTimeout(() => {
+        setIsDetailRolesPopoverOpen(false);
+        setDetailSaveSuccessMsg("");
+      }, 700);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to update permissions.");
+    } finally {
+      setIsSavingDetailRoles(false);
+    }
+  };
 
   // Mobile accordion card expansion tracking for Worker Admins (shrunken by default)
   const [expandedWorkerAdminIds, setExpandedWorkerAdminIds] = useState<Set<string>>(new Set());
@@ -814,24 +990,32 @@ export default function DashboardContent({
   };
 
   const handleDeleteEnquiry = async (id: string) => {
+    if (!canDeleteData) {
+      alert("Permission denied: Your worker admin account does not have permission to delete data.");
+      return;
+    }
     if (!confirm("Are you sure you want to remove this enquiry?")) return;
 
-    const filtered = enquiries.filter((item) => item._id !== id);
-    setEnquiries(filtered);
     try {
-      localStorage.setItem("abc_enquiries", JSON.stringify(filtered));
-      window.dispatchEvent(new Event("abc_enquiries_updated"));
-    } catch {
-      // Ignore
-    }
-
-    try {
-      await fetch(`${API_BASE_URL}/api/v1/admin/enquiries/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/enquiries/${id}`, {
         method: "DELETE",
         headers: getAdminAuthHeaders(),
       });
+      if (res.ok) {
+        const filtered = enquiries.filter((item) => item._id !== id);
+        setEnquiries(filtered);
+        try {
+          localStorage.setItem("abc_enquiries", JSON.stringify(filtered));
+          window.dispatchEvent(new Event("abc_enquiries_updated"));
+        } catch {
+          // Ignore
+        }
+      } else {
+        const errJson = await res.json().catch(() => null);
+        alert(errJson?.message || "Failed to delete enquiry.");
+      }
     } catch {
-      // Ignore
+      alert("Network error: Could not connect to server to delete enquiry.");
     }
   };
 
@@ -910,10 +1094,13 @@ export default function DashboardContent({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...getAdminAuthHeaders(),
         },
         body: JSON.stringify({
           identifier: newAdminEmail.trim().toLowerCase(),
           password: newAdminPassword,
+          assignedRoles: newAdminRoles,
+          canDeleteData: newAdminCanDelete,
         }),
       });
 
@@ -926,11 +1113,115 @@ export default function DashboardContent({
       await refreshWorkerAdmins();
       setNewAdminEmail("");
       setNewAdminPassword("");
+      setNewAdminRoles(["accounting", "enquiries", "whatsapp_enquiries", "clients"]);
+      setNewAdminCanDelete(false);
       setIsCreateModalOpen(false);
     } catch (err: unknown) {
       setCreateError(err instanceof Error ? err.message : "Failed to create worker admin.");
     } finally {
       setIsCreatingAdmin(false);
+    }
+  };
+
+  const handleOpenEditPermissions = (admin: WorkerAdminUser) => {
+    setEditingWorkerAdmin(admin);
+    setEditAdminRoles(
+      admin.assignedRoles && admin.assignedRoles.length > 0
+        ? [...admin.assignedRoles]
+        : ["accounting", "enquiries", "whatsapp_enquiries", "clients"]
+    );
+    setEditAdminCanDelete(Boolean(admin.canDeleteData));
+    setPermissionsError("");
+    setPermissionsSuccess("");
+  };
+
+  const handleSavePermissions = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingWorkerAdmin) return;
+
+    setIsUpdatingPermissions(true);
+    setPermissionsError("");
+    setPermissionsSuccess("");
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/admin/workers/${editingWorkerAdmin.id}/permissions`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAdminAuthHeaders(),
+          },
+          body: JSON.stringify({
+            assignedRoles: editAdminRoles,
+            canDeleteData: editAdminCanDelete,
+          }),
+        }
+      );
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to update permissions in database.");
+      }
+
+      const updatedWorker: WorkerAdminUser | undefined = data.data?.worker;
+      if (updatedWorker) {
+        setWorkerAdmins((prev) =>
+          prev.map((w) => (w.id === updatedWorker.id ? { ...w, ...updatedWorker } : w))
+        );
+        if (selectedWorkerAdminForDetail?.id === updatedWorker.id) {
+          setSelectedWorkerAdminForDetail((prev) => (prev ? { ...prev, ...updatedWorker } : prev));
+        }
+      } else {
+        await refreshWorkerAdmins();
+      }
+
+      setPermissionsSuccess("Permissions updated successfully in MongoDB!");
+      setTimeout(() => {
+        setEditingWorkerAdmin(null);
+        setPermissionsSuccess("");
+      }, 1000);
+    } catch (err: unknown) {
+      setPermissionsError(
+        err instanceof Error ? err.message : "Failed to update permissions."
+      );
+    } finally {
+      setIsUpdatingPermissions(false);
+    }
+  };
+
+  const handleDeleteWorkerAdmin = async (adminId: string, email: string) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to permanently delete worker admin "${email}"? All account records will be removed from MongoDB.`
+      )
+    ) {
+      return;
+    }
+
+    setIsDeletingWorker(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/workers/${adminId}`, {
+        method: "DELETE",
+        headers: getAdminAuthHeaders(),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to delete worker admin from database.");
+      }
+
+      setWorkerAdmins((prev) => prev.filter((w) => w.id !== adminId));
+      if (selectedWorkerAdminForDetail?.id === adminId) {
+        setSelectedWorkerAdminForDetail(null);
+      }
+      if (editingWorkerAdmin?.id === adminId) {
+        setEditingWorkerAdmin(null);
+      }
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to delete worker admin.");
+    } finally {
+      setIsDeletingWorker(false);
     }
   };
 
@@ -1848,25 +2139,27 @@ export default function DashboardContent({
                             )}
 
                             {/* Delete Button */}
-                            <button
-                              type="button"
-                              className="table-action-btn delete"
-                              onClick={() => handleDeleteEnquiry(item._id)}
-                              title="Delete enquiry"
-                              aria-label={`Delete enquiry from ${item.name}`}
-                            >
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
+                            {canDeleteData && (
+                              <button
+                                type="button"
+                                className="table-action-btn delete"
+                                onClick={() => handleDeleteEnquiry(item._id)}
+                                title="Delete enquiry"
+                                aria-label={`Delete enquiry from ${item.name}`}
                               >
-                                <polyline points="3 6 5 6 21 6" />
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                              </svg>
-                            </button>
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                </svg>
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -2366,26 +2659,28 @@ export default function DashboardContent({
                             </button>
                           )}
 
-                          <button
-                            type="button"
-                            className="table-action-btn delete"
-                            style={{ width: "36px", height: "36px", flexShrink: 0 }}
-                            onClick={() => handleDeleteEnquiry(item._id)}
-                            title="Delete enquiry"
-                            aria-label={`Delete enquiry from ${item.name}`}
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
+                          {canDeleteData && (
+                            <button
+                              type="button"
+                              className="table-action-btn delete"
+                              style={{ width: "36px", height: "36px", flexShrink: 0 }}
+                              onClick={() => handleDeleteEnquiry(item._id)}
+                              title="Delete enquiry"
+                              aria-label={`Delete enquiry from ${item.name}`}
                             >
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            </svg>
-                          </button>
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
@@ -2507,6 +2802,12 @@ export default function DashboardContent({
                     <span className="th-inner">Setup</span>
                   </th>
                   <th>
+                    <span className="th-inner">Assigned Roles</span>
+                  </th>
+                  <th>
+                    <span className="th-inner">Delete Data</span>
+                  </th>
+                  <th>
                     <span className="th-inner">Location</span>
                   </th>
                   <th>
@@ -2515,19 +2816,19 @@ export default function DashboardContent({
                   <th>
                     <span className="th-inner">Status</span>
                   </th>
-                  <th style={{ textAlign: "right", width: "48px" }}></th>
+                  <th style={{ textAlign: "right", width: "110px" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoadingWorkers ? (
                   <tr>
-                    <td colSpan={7} className="empty-admin-cell">
+                    <td colSpan={9} className="empty-admin-cell">
                       Loading worker admins...
                     </td>
                   </tr>
                 ) : workerAdmins.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="empty-admin-cell">
+                    <td colSpan={9} className="empty-admin-cell">
                       No admin user
                     </td>
                   </tr>
@@ -2591,6 +2892,81 @@ export default function DashboardContent({
                           >
                             {hasCompleted ? "Completed" : "Pending"}
                           </span>
+                        </td>
+                        <td>
+                          {/* Assigned Roles badges */}
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", maxWidth: "230px" }}>
+                            {!admin.assignedRoles || admin.assignedRoles.length === 0 ? (
+                              <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>No roles assigned</span>
+                            ) : (
+                              admin.assignedRoles.map((roleId) => {
+                                const mod = AVAILABLE_ADMIN_MODULES.find((m) => m.id === roleId);
+                                return (
+                                  <span
+                                    key={roleId}
+                                    style={{
+                                      fontSize: "0.71rem",
+                                      padding: "2px 6px",
+                                      borderRadius: "4px",
+                                      backgroundColor: roleId === "accounting" ? "#eff6ff" : "#f8fafc",
+                                      color: roleId === "accounting" ? "#1d4ed8" : "#334155",
+                                      fontWeight: 500,
+                                      border: roleId === "accounting" ? "1px solid #bfdbfe" : "1px solid #e2e8f0",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "3px",
+                                      lineHeight: 1.3,
+                                    }}
+                                  >
+                                    <span>{mod?.icon || "•"}</span>
+                                    <span>{mod?.shortLabel || mod?.label || roleId}</span>
+                                  </span>
+                                );
+                              })
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          {/* Data Deletion permission status */}
+                          {admin.canDeleteData ? (
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                fontSize: "0.72rem",
+                                fontWeight: 600,
+                                color: "#15803d",
+                                backgroundColor: "#dcfce7",
+                                padding: "3px 8px",
+                                borderRadius: "10px",
+                                border: "1px solid #bbf7d0",
+                              }}
+                              title="Worker Admin has permission to delete data records"
+                            >
+                              <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#16a34a" }} />
+                              Can Delete
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                fontSize: "0.72rem",
+                                fontWeight: 500,
+                                color: "#64748b",
+                                backgroundColor: "#f1f5f9",
+                                padding: "3px 8px",
+                                borderRadius: "10px",
+                                border: "1px solid #e2e8f0",
+                              }}
+                              title="Data deletion is restricted for this worker admin"
+                            >
+                              <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#94a3b8" }} />
+                              Restricted
+                            </span>
+                          )}
                         </td>
                         <td>
                           <span
@@ -2664,30 +3040,83 @@ export default function DashboardContent({
                         </td>
                         <td
                           style={{ textAlign: "right" }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenWorkerAdminDetail(admin);
-                          }}
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <button
-                            type="button"
-                            className="table-arrow-btn"
-                            title="View admin profile & handled invoices"
-                            aria-label={`View ${admin.name || admin.identifier}`}
-                            onClick={() => handleOpenWorkerAdminDetail(admin)}
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                            {/* Edit Roles & Permissions Button */}
+                            <button
+                              type="button"
+                              className="table-action-btn edit"
+                              title="Edit Roles & Delete Permission"
+                              aria-label={`Edit roles for ${admin.name || admin.identifier}`}
+                              onClick={() => handleOpenEditPermissions(admin)}
+                              style={{
+                                width: "30px",
+                                height: "30px",
+                                borderRadius: "6px",
+                                border: "1px solid #cbd5e1",
+                                backgroundColor: "#ffffff",
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: "#2563eb",
+                              }}
                             >
-                              <path d="M5 12h14" />
-                              <path d="M12 5l7 7-7 7" />
-                            </svg>
-                          </button>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 20h9" />
+                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                              </svg>
+                            </button>
+
+                            {/* View Profile & Invoices Arrow */}
+                            <button
+                              type="button"
+                              className="table-arrow-btn"
+                              title="View admin profile & handled invoices"
+                              aria-label={`View ${admin.name || admin.identifier}`}
+                              onClick={() => handleOpenWorkerAdminDetail(admin)}
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M5 12h14" />
+                                <path d="M12 5l7 7-7 7" />
+                              </svg>
+                            </button>
+
+                            {/* Delete Worker Admin Button */}
+                            <button
+                              type="button"
+                              className="table-action-btn delete"
+                              title="Delete Worker Admin Account"
+                              aria-label={`Delete ${admin.name || admin.identifier}`}
+                              onClick={() => handleDeleteWorkerAdmin(admin.id, admin.identifier)}
+                              disabled={isDeletingWorker}
+                              style={{
+                                width: "30px",
+                                height: "30px",
+                                borderRadius: "6px",
+                                border: "1px solid #fecaca",
+                                backgroundColor: "#fff5f5",
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: "#dc2626",
+                              }}
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -2889,10 +3318,11 @@ export default function DashboardContent({
         >
           <div
             className="admin-modal-box"
+            style={{ maxWidth: "480px", width: "100%", boxSizing: "border-box" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="admin-modal-header">
-              <h2 className="admin-modal-title">Create Admin User</h2>
+            <div className="admin-modal-header" style={{ marginBottom: "16px" }}>
+              <h2 className="admin-modal-title">Create Worker Admin</h2>
               <button
                 type="button"
                 className="admin-modal-close-btn"
@@ -2930,32 +3360,129 @@ export default function DashboardContent({
             )}
 
             <form onSubmit={handleCreateAdmin} className="admin-modal-form">
-              <div className="admin-form-field">
-                <label className="admin-form-label">Admin Email</label>
-                <input
-                  type="email"
-                  value={newAdminEmail}
-                  onChange={(e) => setNewAdminEmail(e.target.value)}
-                  placeholder="worker1@abc.com"
-                  className="admin-form-input"
-                  required
-                  autoFocus
-                />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "12px", marginBottom: "16px" }}>
+                <div className="admin-form-field" style={{ minWidth: 0 }}>
+                  <label className="admin-form-label">Admin Email</label>
+                  <input
+                    type="email"
+                    value={newAdminEmail}
+                    onChange={(e) => setNewAdminEmail(e.target.value)}
+                    placeholder="worker1@abc.com"
+                    className="admin-form-input"
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <div className="admin-form-field" style={{ minWidth: 0 }}>
+                  <label className="admin-form-label">Temporary Password</label>
+                  <input
+                    type="password"
+                    value={newAdminPassword}
+                    onChange={(e) => setNewAdminPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="admin-form-input"
+                    required
+                  />
+                </div>
               </div>
 
-              <div className="admin-form-field">
-                <label className="admin-form-label">Temporary Password</label>
-                <input
-                  type="password"
-                  value={newAdminPassword}
-                  onChange={(e) => setNewAdminPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="admin-form-input"
-                  required
-                />
+              {/* Role & Module Assignment */}
+              <div className="admin-form-field" style={{ marginBottom: "0" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                  <label className="admin-form-label" style={{ margin: 0, fontWeight: 600 }}>
+                    Assign Dashboard Roles & Modules
+                  </label>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      type="button"
+                      onClick={() => setNewAdminRoles(AVAILABLE_ADMIN_MODULES.map((m) => m.id))}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#2563eb",
+                        fontSize: "0.76rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >
+                      Select All
+                    </button>
+                    <span style={{ color: "#cbd5e1" }}>•</span>
+                    <button
+                      type="button"
+                      onClick={() => setNewAdminRoles([])}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#64748b",
+                        fontSize: "0.76rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+
+                <div className="worker-role-list">
+                  {AVAILABLE_ADMIN_MODULES.map((mod) => {
+                    const isChecked = newAdminRoles.includes(mod.id);
+                    return (
+                      <div
+                        key={mod.id}
+                        className="worker-role-list-item"
+                        onClick={() => {
+                          setNewAdminRoles((prev) =>
+                            isChecked
+                              ? prev.filter((r) => r !== mod.id)
+                              : [...prev, mod.id]
+                          );
+                        }}
+                      >
+                        <div className="role-info">
+                          <span className="role-icon">{mod.icon}</span>
+                          <span className="role-label">{mod.label}</span>
+                        </div>
+
+                        <div
+                          role="switch"
+                          aria-checked={isChecked}
+                          className={`worker-role-toggle ${isChecked ? "active" : ""}`}
+                        >
+                          <div className="worker-role-toggle-thumb" />
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Ability to Delete Data Option */}
+                  <div
+                    className="worker-role-list-item"
+                    onClick={() => setNewAdminCanDelete((prev) => !prev)}
+                  >
+                    <div className="role-info">
+                      <span className="role-icon">🗑️</span>
+                      <span className="role-label" style={{ color: newAdminCanDelete ? "#dc2626" : "#1e293b" }}>
+                        Ability to Delete Data
+                      </span>
+                    </div>
+
+                    <div
+                      role="switch"
+                      aria-checked={newAdminCanDelete}
+                      className={`worker-role-toggle delete-toggle ${newAdminCanDelete ? "active" : ""}`}
+                    >
+                      <div className="worker-role-toggle-thumb" />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="admin-modal-actions">
+              <div className="admin-modal-actions" style={{ marginTop: "20px" }}>
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
@@ -2969,7 +3496,185 @@ export default function DashboardContent({
                   className="capsule-btn-black"
                   disabled={isCreatingAdmin}
                 >
-                  {isCreatingAdmin ? "Creating in DB..." : "Create Admin"}
+                  {isCreatingAdmin ? "Creating in DB..." : "Create Worker Admin"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Roles & Permissions for existing Worker Admin */}
+      {editingWorkerAdmin && (
+        <div
+          className="admin-modal-backdrop"
+          onClick={() => setEditingWorkerAdmin(null)}
+        >
+          <div
+            className="admin-modal-box"
+            style={{ maxWidth: "480px", width: "100%", boxSizing: "border-box" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="admin-modal-header" style={{ marginBottom: "16px" }}>
+              <div>
+                <h2 className="admin-modal-title">Edit Roles & Permissions</h2>
+                <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "#64748b" }}>
+                  Worker Admin: <strong>{editingWorkerAdmin.name || editingWorkerAdmin.identifier}</strong> ({editingWorkerAdmin.identifier})
+                </p>
+              </div>
+              <button
+                type="button"
+                className="admin-modal-close-btn"
+                onClick={() => setEditingWorkerAdmin(null)}
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            {permissionsError && (
+              <div
+                style={{
+                  backgroundColor: "#fef2f2",
+                  color: "#b91c1c",
+                  fontSize: "0.82rem",
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  marginBottom: "14px",
+                  border: "1px solid #fecaca",
+                }}
+              >
+                {permissionsError}
+              </div>
+            )}
+
+            {permissionsSuccess && (
+              <div
+                style={{
+                  backgroundColor: "#f0fdf4",
+                  color: "#166534",
+                  fontSize: "0.82rem",
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  marginBottom: "14px",
+                  border: "1px solid #bbf7d0",
+                }}
+              >
+                {permissionsSuccess}
+              </div>
+            )}
+
+            <form onSubmit={handleSavePermissions} className="admin-modal-form">
+              {/* Role Assignment */}
+              <div className="admin-form-field" style={{ marginBottom: "0" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                  <label className="admin-form-label" style={{ margin: 0, fontWeight: 600 }}>
+                    Assigned Dashboard Modules
+                  </label>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      type="button"
+                      onClick={() => setEditAdminRoles(AVAILABLE_ADMIN_MODULES.map((m) => m.id))}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#2563eb",
+                        fontSize: "0.76rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >
+                      Select All
+                    </button>
+                    <span style={{ color: "#cbd5e1" }}>•</span>
+                    <button
+                      type="button"
+                      onClick={() => setEditAdminRoles([])}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#64748b",
+                        fontSize: "0.76rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+
+                <div className="worker-role-list">
+                  {AVAILABLE_ADMIN_MODULES.map((mod) => {
+                    const isChecked = editAdminRoles.includes(mod.id);
+                    return (
+                      <div
+                        key={mod.id}
+                        className="worker-role-list-item"
+                        onClick={() => {
+                          setEditAdminRoles((prev) =>
+                            isChecked
+                              ? prev.filter((r) => r !== mod.id)
+                              : [...prev, mod.id]
+                          );
+                        }}
+                      >
+                        <div className="role-info">
+                          <span className="role-icon">{mod.icon}</span>
+                          <span className="role-label">{mod.label}</span>
+                        </div>
+
+                        <div
+                          role="switch"
+                          aria-checked={isChecked}
+                          className={`worker-role-toggle ${isChecked ? "active" : ""}`}
+                        >
+                          <div className="worker-role-toggle-thumb" />
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Data Deletion Toggle */}
+                  <div
+                    className="worker-role-list-item"
+                    onClick={() => setEditAdminCanDelete((prev) => !prev)}
+                  >
+                    <div className="role-info">
+                      <span className="role-icon">🗑️</span>
+                      <span className="role-label" style={{ color: editAdminCanDelete ? "#dc2626" : "#1e293b" }}>
+                        Ability to Delete Data
+                      </span>
+                    </div>
+
+                    <div
+                      role="switch"
+                      aria-checked={editAdminCanDelete}
+                      className={`worker-role-toggle delete-toggle ${editAdminCanDelete ? "active" : ""}`}
+                    >
+                      <div className="worker-role-toggle-thumb" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="admin-modal-actions" style={{ marginTop: "20px" }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingWorkerAdmin(null)}
+                  className="flat-secondary-btn"
+                  disabled={isUpdatingPermissions}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="capsule-btn-black"
+                  disabled={isUpdatingPermissions}
+                >
+                  {isUpdatingPermissions ? "Saving to DB..." : "Save Permissions"}
                 </button>
               </div>
             </form>
@@ -3032,121 +3737,6 @@ export default function DashboardContent({
         />
       )}
 
-      {/* Modal: Worker Admin First-Time Profile Setup */}
-      {isWorkerProfilePending && (
-        <div className="admin-modal-backdrop" style={{ zIndex: 9999 }}>
-          <div
-            className="admin-modal-box"
-            style={{ maxWidth: "440px", padding: "32px 28px" }}
-          >
-            <div style={{ textAlign: "center", marginBottom: "20px" }}>
-              <div
-                style={{
-                  width: "48px",
-                  height: "48px",
-                  borderRadius: "50%",
-                  backgroundColor: "#f1f5f9",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: "12px",
-                }}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#0f172a"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ width: "22px", height: "22px" }}
-                >
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                </svg>
-              </div>
-              <h2
-                style={{
-                  fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
-                  fontSize: "1.25rem",
-                  fontWeight: 700,
-                  color: "#0f172a",
-                  margin: "0 0 6px 0",
-                }}
-              >
-                Complete Your Profile
-              </h2>
-              <p
-                style={{
-                  fontSize: "0.85rem",
-                  color: "#64748b",
-                  margin: 0,
-                  lineHeight: 1.45,
-                }}
-              >
-                Welcome! Please enter your name and phone number to complete your
-                Worker Admin account setup.
-              </p>
-            </div>
-
-            {profileError && (
-              <div
-                style={{
-                  backgroundColor: "#fef2f2",
-                  color: "#b91c1c",
-                  fontSize: "0.82rem",
-                  padding: "8px 12px",
-                  borderRadius: "6px",
-                  marginBottom: "14px",
-                  border: "1px solid #fecaca",
-                }}
-              >
-                {profileError}
-              </div>
-            )}
-
-            <form onSubmit={handleCompleteProfile} className="admin-modal-form">
-              <div className="admin-form-field">
-                <label className="admin-form-label">Full Name *</label>
-                <input
-                  type="text"
-                  value={workerProfileName}
-                  onChange={(e) => setWorkerProfileName(e.target.value)}
-                  placeholder="e.g. Tariq Mansoor"
-                  className="admin-form-input"
-                  required
-                  autoFocus
-                />
-              </div>
-
-              <div className="admin-form-field">
-                <label className="admin-form-label">Phone Number *</label>
-                <input
-                  type="tel"
-                  value={workerProfilePhone}
-                  onChange={(e) => setWorkerProfilePhone(e.target.value)}
-                  placeholder="e.g. +91 98765 43210"
-                  className="admin-form-input"
-                  required
-                />
-              </div>
-
-              <div
-                className="admin-modal-actions"
-                style={{ justifyContent: "flex-end", marginTop: "24px" }}
-              >
-                <button
-                  type="submit"
-                  className="capsule-btn-black"
-                  style={{ width: "100%", justifyContent: "center" }}
-                >
-                  Complete Setup
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* -------------------------------------------------------------
           EMAIL REPLY MODAL (Direct Email Response via Resend)
@@ -3302,22 +3892,11 @@ export default function DashboardContent({
                   fontSize: "1.25rem",
                   fontWeight: 700,
                   color: "#0f172a",
-                  margin: "0 0 6px 0",
+                  margin: 0,
                 }}
               >
                 Complete Your Profile
               </h2>
-              <p
-                style={{
-                  fontSize: "0.85rem",
-                  color: "#64748b",
-                  margin: 0,
-                  lineHeight: 1.45,
-                }}
-              >
-                Welcome! Please enter your name and phone number to complete your
-                Worker Admin account setup.
-              </p>
             </div>
 
             {profileError && (
@@ -3431,18 +4010,50 @@ export default function DashboardContent({
                 </div>
               </div>
 
-              <button
-                type="button"
-                className="admin-modal-close"
-                onClick={() => setSelectedWorkerAdminForDetail(null)}
-                aria-label="Close modal"
-              >
-                ✕
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {isMaster && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleDeleteWorkerAdmin(
+                        selectedWorkerAdminForDetail.id,
+                        selectedWorkerAdminForDetail.identifier
+                      )
+                    }
+                    disabled={isDeletingWorker}
+                    className="worker-modal-delete-btn"
+                    title="Delete Worker Admin Account"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      width="13"
+                      height="13"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                    <span>Delete User</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  className="admin-modal-close"
+                  onClick={() => setSelectedWorkerAdminForDetail(null)}
+                  aria-label="Close modal"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* Profile Info Bar */}
-            <div className="worker-meta-bar">
+            <div className="worker-meta-bar" style={{ position: "relative", zIndex: 40 }}>
               <div className="worker-meta-item">
                 <span className="meta-label">Phone</span>
                 <span className="meta-val">
@@ -3457,8 +4068,37 @@ export default function DashboardContent({
                   {selectedWorkerAdminForDetail.location || "UAE Office"}
                 </span>
               </div>
-              <div className="worker-meta-item">
-                <span className="meta-label">Last Login</span>
+              <div
+                className="worker-meta-item"
+                ref={detailRolesPopoverRef}
+                style={{ position: "relative" }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                  <span className="meta-label">Last Login</span>
+                  {isMaster && (
+                    <button
+                      type="button"
+                      onClick={handleToggleDetailRolesPopover}
+                      className="worker-meta-edit-icon-btn"
+                      title="Edit Roles & Permissions"
+                      aria-label="Edit Roles & Permissions"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        width="12"
+                        height="12"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
                 <span className="meta-val">
                   {selectedWorkerAdminForDetail.lastLoginAt
                     ? new Date(
@@ -3473,6 +4113,221 @@ export default function DashboardContent({
                       })
                     : "Never"}
                 </span>
+
+                {/* Roles & Permissions Popover */}
+                {isDetailRolesPopoverOpen && (
+                  <div
+                    className="worker-roles-popover"
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 8px)",
+                      right: 0,
+                      width: "320px",
+                      maxWidth: "calc(100vw - 36px)",
+                      backgroundColor: "#ffffff",
+                      borderRadius: "12px",
+                      boxShadow: "0 14px 35px -4px rgba(15, 23, 42, 0.18), 0 4px 12px -2px rgba(15, 23, 42, 0.08)",
+                      border: "1px solid #e2e8f0",
+                      padding: "14px 16px",
+                      zIndex: 100,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "6px", borderBottom: "1px solid #f1f5f9" }}>
+                      <div>
+                        <div style={{ fontSize: "0.84rem", fontWeight: 700, color: "#0f172a" }}>
+                          Roles & Permissions
+                        </div>
+                        <div style={{ fontSize: "0.72rem", color: "#64748b" }}>
+                          Toggle dashboard modules for this worker
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsDetailRolesPopoverOpen(false)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#94a3b8",
+                          cursor: "pointer",
+                          fontSize: "14px",
+                          padding: "2px 4px",
+                          lineHeight: 1,
+                        }}
+                        aria-label="Close popover"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {/* Roles with toggle switches */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "3px", maxHeight: "240px", overflowY: "auto" }}>
+                      {AVAILABLE_ADMIN_MODULES.map((mod) => {
+                        const isSelected = detailRolesDraft.includes(mod.id);
+                        return (
+                          <div
+                            key={mod.id}
+                            onClick={() => {
+                              setDetailRolesDraft((prev) =>
+                                prev.includes(mod.id)
+                                  ? prev.filter((r) => r !== mod.id)
+                                  : [...prev, mod.id]
+                              );
+                            }}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              padding: "7px 8px",
+                              borderRadius: "7px",
+                              cursor: "pointer",
+                              backgroundColor: isSelected ? "#eff6ff" : "transparent",
+                              transition: "background-color 0.15s ease",
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <span style={{ fontSize: "1rem" }}>{mod.icon}</span>
+                              <div>
+                                <div style={{ fontSize: "0.8rem", fontWeight: 600, color: isSelected ? "#1d4ed8" : "#1e293b" }}>
+                                  {mod.label}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Toggle switch button */}
+                            <div
+                              role="switch"
+                              aria-checked={isSelected}
+                              style={{
+                                width: "36px",
+                                height: "20px",
+                                borderRadius: "10px",
+                                backgroundColor: isSelected ? "#2563eb" : "#cbd5e1",
+                                position: "relative",
+                                transition: "background-color 0.2s ease",
+                                flexShrink: 0,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: "16px",
+                                  height: "16px",
+                                  borderRadius: "50%",
+                                  backgroundColor: "#ffffff",
+                                  position: "absolute",
+                                  top: "2px",
+                                  left: isSelected ? "18px" : "2px",
+                                  transition: "left 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.2)",
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Data deletion permission toggle */}
+                    <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "8px" }}>
+                      <div
+                        onClick={() => setDetailCanDeleteDraft((prev) => !prev)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "7px 8px",
+                          borderRadius: "7px",
+                          cursor: "pointer",
+                          backgroundColor: detailCanDeleteDraft ? "#f0fdf4" : "transparent",
+                          transition: "background-color 0.15s ease",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span style={{ fontSize: "1rem" }}>🗑️</span>
+                          <span style={{ fontSize: "0.8rem", fontWeight: 600, color: detailCanDeleteDraft ? "#15803d" : "#1e293b" }}>
+                            Ability to Delete Data
+                          </span>
+                        </div>
+
+                        {/* Toggle switch button */}
+                        <div
+                          role="switch"
+                          aria-checked={detailCanDeleteDraft}
+                          style={{
+                            width: "36px",
+                            height: "20px",
+                            borderRadius: "10px",
+                            backgroundColor: detailCanDeleteDraft ? "#16a34a" : "#cbd5e1",
+                            position: "relative",
+                            transition: "background-color 0.2s ease",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: "16px",
+                              height: "16px",
+                              borderRadius: "50%",
+                              backgroundColor: "#ffffff",
+                              position: "absolute",
+                              top: "2px",
+                              left: detailCanDeleteDraft ? "18px" : "2px",
+                              transition: "left 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.2)",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", borderTop: "1px solid #f1f5f9", paddingTop: "10px", marginTop: "2px" }}>
+                      <button
+                        type="button"
+                        onClick={() => setIsDetailRolesPopoverOpen(false)}
+                        style={{
+                          padding: "5px 12px",
+                          fontSize: "0.78rem",
+                          fontWeight: 500,
+                          borderRadius: "6px",
+                          border: "1px solid #e2e8f0",
+                          backgroundColor: "#ffffff",
+                          color: "#64748b",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveDetailRoles}
+                        disabled={isSavingDetailRoles}
+                        style={{
+                          padding: "5px 14px",
+                          fontSize: "0.78rem",
+                          fontWeight: 600,
+                          borderRadius: "6px",
+                          border: "1px solid #2563eb",
+                          backgroundColor: detailSaveSuccessMsg ? "#16a34a" : "#2563eb",
+                          color: "#ffffff",
+                          cursor: isSavingDetailRoles ? "wait" : "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                        }}
+                      >
+                        {isSavingDetailRoles
+                          ? "Saving..."
+                          : detailSaveSuccessMsg
+                          ? "✓ Saved"
+                          : "Save"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

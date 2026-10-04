@@ -26,6 +26,17 @@ interface ExpensesManagerProps {
 }
 
 export default function ExpensesManager({ getAuthHeaders, onNavigateTab }: ExpensesManagerProps) {
+  let user: any = null;
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem("abc_admin_user") : null;
+    if (raw) user = JSON.parse(raw);
+  } catch {}
+  const isMaster =
+    user?.role === "master_admin" ||
+    user?.role === "superadmin" ||
+    user?.identifier === "masteradmin@abc.com";
+  const canDeleteData = isMaster || user?.canDeleteData !== false;
+
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -149,6 +160,10 @@ export default function ExpensesManager({ getAuthHeaders, onNavigateTab }: Expen
 
   // Delete Expense from MongoDB
   const handleDeleteExpense = async (id: string, code: string) => {
+    if (!canDeleteData) {
+      alert("Permission denied: Your worker admin account does not have permission to delete data.");
+      return;
+    }
     if (!confirm(`Are you sure you want to permanently delete Expense #${code} from MongoDB?`)) {
       return;
     }
@@ -162,7 +177,8 @@ export default function ExpensesManager({ getAuthHeaders, onNavigateTab }: Expen
         setExpenses((prev) => prev.filter((exp) => (exp.id || exp._id) !== id));
         window.dispatchEvent(new Event("abc_expense_updated"));
       } else {
-        alert("Failed to delete expense record.");
+        const errJson = await res.json().catch(() => null);
+        alert(errJson?.message || "Failed to delete expense record.");
       }
     } catch (err) {
       console.error("Error deleting expense:", err);
@@ -444,14 +460,16 @@ export default function ExpensesManager({ getAuthHeaders, onNavigateTab }: Expen
                       </span>
                     </td>
                     <td style={{ textAlign: "right" }}>
-                      <button
-                        type="button"
-                        className="erp-mini-btn delete"
-                        onClick={() => handleDeleteExpense(id, exp.expenseId)}
-                        title="Delete Expense Record"
-                      >
-                        🗑️
-                      </button>
+                      {canDeleteData && (
+                        <button
+                          type="button"
+                          className="erp-mini-btn delete"
+                          onClick={() => handleDeleteExpense(id, exp.expenseId)}
+                          title="Delete Expense Record"
+                        >
+                          🗑️
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

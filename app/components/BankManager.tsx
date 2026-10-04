@@ -28,6 +28,19 @@ interface BankManagerProps {
 }
 
 export default function BankManager({ getAuthHeaders, user }: BankManagerProps) {
+  let effectiveUser = user;
+  if (!effectiveUser) {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem("abc_admin_user") : null;
+      if (raw) effectiveUser = JSON.parse(raw);
+    } catch {}
+  }
+  const isMaster =
+    effectiveUser?.role === "master_admin" ||
+    effectiveUser?.role === "superadmin" ||
+    effectiveUser?.identifier === "masteradmin@abc.com";
+  const canDeleteData = isMaster || (effectiveUser as any)?.canDeleteData !== false;
+
   const [banks, setBanks] = useState<BankItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -155,6 +168,10 @@ export default function BankManager({ getAuthHeaders, user }: BankManagerProps) 
 
   // Delete Bank from MongoDB
   const handleDelete = async (id: string, name: string) => {
+    if (!canDeleteData) {
+      alert("Permission denied: Your worker admin account does not have permission to delete data.");
+      return;
+    }
     if (!confirm(`Are you sure you want to remove '${name}' from MongoDB banks?`)) {
       return;
     }
@@ -332,17 +349,19 @@ export default function BankManager({ getAuthHeaders, user }: BankManagerProps) 
                     </span>
                   </td>
                   <td style={{ textAlign: "right" }}>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(item.id || item._id!, item.bankName)}
-                      disabled={deletingId === (item.id || item._id)}
-                      className="personnel-delete-btn"
-                      title="Delete Bank Account"
-                    >
-                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      </svg>
-                    </button>
+                    {canDeleteData && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id || item._id!, item.bankName)}
+                        disabled={deletingId === (item.id || item._id)}
+                        className="personnel-delete-btn"
+                        title="Delete Bank Account"
+                      >
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
