@@ -1,39 +1,68 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { API_BASE_URL } from "../config/api";
+
+const KEEP_ALIVE_INTERVAL = 10 * 60 * 1000; // 10 minutes
+const TAB_SWITCH_COOLDOWN = 60 * 1000; // 1 minute cooldown to prevent spam on rapid tab switches
 
 /**
  * ServerWarmer component
  * 
- * Silently sends a lightweight GET /health request to the backend server
- * when any user visits the admin portal. If the backend hosted on Render is asleep
- * (due to 15-minute inactivity spin-down), this wake-up ping triggers its boot
- * cycle in the background before the admin attempts to log in.
- *
- * Uses sessionStorage so it only runs once per browser session.
+ * Silently sends a lightweight GET /health request to keep the backend server awake
+ * (preventing Render 15-minute inactivity shutdown):
+ * 1. Sends an initial ping on page mount.
+ * 2. Runs a recurring 10-minute background keep-alive ping while the tab is open.
+ * 3. Immediately triggers a ping when the user switches back to the tab (if >= 60s cooldown passed).
+ * 4. Resets the 10-minute timer whenever a ping fires.
  */
 export default function ServerWarmer() {
-  useEffect(() => {
-    try {
-      const isWarmed = sessionStorage.getItem("abc_server_warmed");
-      if (isWarmed) return;
+  const lastPingTimeRef = useRef<number>(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-      // Fire and forget: trigger wake-up without blocking UI
+  useEffect(() => {
+    const sendPing = () => {
+      lastPingTimeRef.current = Date.now();
+
       fetch(`${API_BASE_URL}/health`, {
         method: "GET",
         mode: "cors",
-      })
-        .then(() => {
-          sessionStorage.setItem("abc_server_warmed", "true");
-        })
-        .catch(() => {
-          // Silently ignore while spinning up or if network is offline
-        });
-    } catch {
-      // Ignore sessionStorage access restrictions if cookies/storage are disabled
-    }
+        cache: "no-store",
+      }).catch(() => {
+        // Silently ignore while spinning up or if network is offline
+      });
+
+      // Clear existing interval and start fresh 10-minute countdown from this ping
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      timerRef.current = setInterval(sendPing, KEEP_ALIVE_INTERVAL);
+    };
+
+    // 1. Initial wake-up ping on mount
+    sendPing();
+
+    // 2. Tab visibility change handler
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        const timeSinceLastPing = Date.now() - lastPingTimeRef.current;
+        if (timeSinceLastPing >= TAB_SWITCH_COOLDOWN) {
+          sendPing();
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // 3. Cleanup on unmount
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   return null;
 }
+
