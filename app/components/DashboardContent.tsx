@@ -17,6 +17,7 @@ import BankManager from "./BankManager";
 import PersonnelManager from "./PersonnelManager";
 import ActivityLogManager from "./ActivityLogManager";
 import PrintableInvoiceModal, { PrintableInvoiceData } from "./PrintableInvoiceModal";
+import NotesManager from "./NotesManager";
 import { API_BASE_URL } from "../config/api";
 
 export interface AdminModuleOption {
@@ -1260,7 +1261,11 @@ export default function DashboardContent({
     (activeTab === "overview" && isMaster && isEnquiriesLoading);
 
   return (
-    <main className={`dashboard-main ${activeTab === "whatsapp_enquiries" ? "dashboard-main-whatsapp" : ""}`}>
+    <main
+      className={`dashboard-main ${
+        activeTab === "whatsapp_enquiries" ? "dashboard-main-whatsapp" : ""
+      } ${activeTab === "notes" ? "dashboard-main-notes" : ""}`}
+    >
       {/* Real-time Database Loading Overlay */}
       {isCurrentTabLoading && <DatabaseLoadingOverlay text="Syncing..." />}
 
@@ -2677,6 +2682,18 @@ export default function DashboardContent({
         <WhatsAppEnquiriesManager
           user={user}
           onPendingCountChange={onPendingWhatsAppCountChange}
+        />
+      )}
+
+      {/* -------------------------------------------------------------
+          TAB: NOTES & STICKY CANVAS
+          ------------------------------------------------------------- */}
+      {activeTab === "notes" && (
+        <NotesManager
+          user={user}
+          selectedProject={selectedProject}
+          onNavigateTab={onNavigateTab}
+          onOpenInvoiceModal={(inv) => setActivePrintInvoice(inv)}
         />
       )}
 

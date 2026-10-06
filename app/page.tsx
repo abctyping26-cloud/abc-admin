@@ -49,6 +49,7 @@ function getServerSnapshot(): string | null {
 
 const VALID_TABS: SidebarTab[] = [
   "overview",
+  "notes",
   "clients",
   "website_edit",
   "services",
@@ -70,11 +71,12 @@ function isValidTab(tab: unknown): tab is SidebarTab {
 }
 
 function isTabAllowedForUser(tab: SidebarTab, user: any, isMaster: boolean): boolean {
+  if (tab === "notes") return true;
   if (isMaster) return true;
   if (tab === "worker_admins") return false;
   const roles: string[] = user?.assignedRoles;
   if (!roles || roles.length === 0) {
-    return ["clients", "enquiries", "whatsapp_enquiries", "accounting", "overview"].includes(tab);
+    return ["clients", "enquiries", "whatsapp_enquiries", "accounting", "overview", "notes"].includes(tab);
   }
   if (tab === "accounting" || tab.startsWith("accounting_")) {
     return roles.includes("accounting");
@@ -322,6 +324,8 @@ export default function Home() {
     return <main style={{ minHeight: "100vh", backgroundColor: "#ffffff" }} />;
   }
 
+  const isNotesTab = activeTab === "notes";
+
   return (
     <div
       className={`dashboard-wrapper ${
@@ -335,6 +339,7 @@ export default function Home() {
         onLogout={handleSignOut}
         onToggleSidebar={() => setIsSidebarExpanded((prev) => !prev)}
         isSidebarExpanded={isSidebarExpanded}
+        isShrunk={isNotesTab}
         onSelectTab={handleTabChange}
       />
       <div
@@ -342,7 +347,7 @@ export default function Home() {
           activeTab === "whatsapp_enquiries" && selectedProject === "abc_typing"
             ? "dashboard-body-fixed"
             : ""
-        }`}
+        } ${isNotesTab ? "dashboard-body-notes" : ""}`}
       >
         <DashboardSidebar
           activeTab={activeTab}
@@ -354,6 +359,7 @@ export default function Home() {
           pendingEnquiriesCount={pendingEnquiriesCount}
           pendingWhatsAppCount={pendingWhatsAppCount}
           isExpanded={isSidebarExpanded}
+          isShrunk={isNotesTab}
           onCollapse={() => setIsSidebarExpanded(false)}
         />
         {isSidebarExpanded && (
@@ -363,7 +369,7 @@ export default function Home() {
             aria-hidden="true"
           />
         )}
-        {selectedProject === "abc_typing" || activeTab === "web_traffic" || activeTab === "cloud_usage" ? (
+        {selectedProject === "abc_typing" || activeTab === "web_traffic" || activeTab === "cloud_usage" || activeTab === "notes" ? (
           <DashboardContent
             activeTab={activeTab}
             onNavigateTab={handleTabChange}

@@ -14,6 +14,7 @@ interface DashboardHeaderProps {
   onLogout: () => void;
   onToggleSidebar?: () => void;
   isSidebarExpanded?: boolean;
+  isShrunk?: boolean;
   onSelectTab?: (tab: SidebarTab) => void;
 }
 
@@ -22,6 +23,7 @@ export default function DashboardHeader({
   onLogout,
   onToggleSidebar,
   isSidebarExpanded = false,
+  isShrunk = false,
   onSelectTab,
 }: DashboardHeaderProps) {
   const isMaster =
@@ -38,7 +40,7 @@ export default function DashboardHeader({
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="dashboard-header">
+    <header className={`dashboard-header ${isShrunk ? "is-shrunk" : ""}`}>
       {/* Left side: hamburger button on mobile, clean abc logo on desktop */}
       <div className="header-left">
         <button

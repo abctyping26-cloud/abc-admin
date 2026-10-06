@@ -5,6 +5,7 @@ import Link from "next/link";
 
 export type SidebarTab =
   | "overview"
+  | "notes"
   | "activity_log"
   | "worker_admins"
   | "enquiries"
@@ -39,6 +40,7 @@ interface DashboardSidebarProps {
   pendingEnquiriesCount?: number;
   pendingWhatsAppCount?: number;
   isExpanded?: boolean;
+  isShrunk?: boolean;
   onCollapse?: () => void;
 }
 
@@ -52,17 +54,19 @@ export default function DashboardSidebar({
   pendingEnquiriesCount = 0,
   pendingWhatsAppCount = 0,
   isExpanded = false,
+  isShrunk = false,
   onCollapse,
 }: DashboardSidebarProps) {
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const projectSelectorRef = useRef<HTMLDivElement>(null);
 
   const canAccessTab = (tab: string): boolean => {
+    if (tab === "notes") return true;
     if (isMaster) return true;
     if (tab === "worker_admins" || tab === "activity_log") return false;
     const roles = user?.assignedRoles;
     if (!roles || roles.length === 0) {
-      return ["clients", "enquiries", "whatsapp_enquiries", "accounting", "overview"].includes(tab);
+      return ["clients", "enquiries", "whatsapp_enquiries", "accounting", "overview", "notes"].includes(tab);
     }
     if (tab === "accounting" || tab.startsWith("accounting_")) {
       return roles.includes("accounting");
@@ -124,7 +128,7 @@ export default function DashboardSidebar({
 
   return (
     <aside
-      className={`dashboard-sidebar ${isExpanded ? "is-expanded" : ""}`}
+      className={`dashboard-sidebar ${isExpanded ? "is-expanded" : ""} ${isShrunk ? "is-shrunk" : ""}`}
       aria-label="Admin Navigation"
     >
       {/* Mobile-only Header with Collapse / X Button */}
@@ -284,6 +288,7 @@ export default function DashboardSidebar({
             type="button"
             onClick={() => onSelectTab("overview")}
             className={`sidebar-menu-btn ${activeTab === "overview" ? "active" : ""}`}
+            title="Overview"
           >
             <div className="sidebar-menu-left">
               <svg
@@ -303,12 +308,40 @@ export default function DashboardSidebar({
           </button>
         )}
 
+        {/* Notes & Sticky Canvas */}
+        {canAccessTab("notes") && (
+          <button
+            type="button"
+            onClick={() => onSelectTab("notes")}
+            className={`sidebar-menu-btn ${activeTab === "notes" ? "active" : ""}`}
+            title="Notes"
+          >
+            <div className="sidebar-menu-left">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z" />
+                <path d="M15 3v6h6" />
+                <line x1="9" y1="13" x2="15" y2="13" />
+                <line x1="9" y1="17" x2="13" y2="17" />
+              </svg>
+              <span>Notes</span>
+            </div>
+          </button>
+        )}
+
         {/* Clients & Files (Available to both Master Admin & Worker Admins) */}
         {canAccessTab("clients") && (
           <button
             type="button"
             onClick={() => onSelectTab("clients")}
             className={`sidebar-menu-btn ${activeTab === "clients" ? "active" : ""}`}
+            title="Clients & Files"
           >
             <div className="sidebar-menu-left">
               <svg
