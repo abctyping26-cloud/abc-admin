@@ -15,6 +15,7 @@ import ExpensesManager from "./ExpensesManager";
 import InvoicesManager from "./InvoicesManager";
 import BankManager from "./BankManager";
 import PersonnelManager from "./PersonnelManager";
+import ActivityLogManager from "./ActivityLogManager";
 import PrintableInvoiceModal, { PrintableInvoiceData } from "./PrintableInvoiceModal";
 import { API_BASE_URL } from "../config/api";
 
@@ -303,6 +304,7 @@ export default function DashboardContent({
 
   // Worker Admin Detail & Handled Invoices state
   const [selectedWorkerAdminForDetail, setSelectedWorkerAdminForDetail] = useState<WorkerAdminUser | null>(null);
+  const [isEditingDetailRoles, setIsEditingDetailRoles] = useState(false);
   const [workerInvoices, setWorkerInvoices] = useState<any[]>([]);
   const [isLoadingWorkerInvoices, setIsLoadingWorkerInvoices] = useState(false);
   const [activePrintInvoice, setActivePrintInvoice] = useState<PrintableInvoiceData | null>(null);
@@ -333,7 +335,7 @@ export default function DashboardContent({
   }, [user]);
 
   const handleOpenWorkerAdminDetail = (admin: WorkerAdminUser) => {
-    setIsDetailRolesPopoverOpen(false);
+    setIsEditingDetailRoles(false);
     setSelectedWorkerAdminForDetail(admin);
     fetchWorkerInvoices(admin);
   };
@@ -430,45 +432,20 @@ export default function DashboardContent({
   const [permissionsSuccess, setPermissionsSuccess] = useState("");
   const [isDeletingWorker, setIsDeletingWorker] = useState(false);
 
-  // Detail Modal Roles Popover state
-  const detailRolesPopoverRef = useRef<HTMLDivElement>(null);
-  const [isDetailRolesPopoverOpen, setIsDetailRolesPopoverOpen] = useState(false);
+  // Detail Modal Roles in-place edit state
   const [detailRolesDraft, setDetailRolesDraft] = useState<string[]>([]);
   const [detailCanDeleteDraft, setDetailCanDeleteDraft] = useState<boolean>(false);
   const [isSavingDetailRoles, setIsSavingDetailRoles] = useState(false);
   const [detailSaveSuccessMsg, setDetailSaveSuccessMsg] = useState("");
 
-  const handleToggleDetailRolesPopover = () => {
-    if (!isDetailRolesPopoverOpen && selectedWorkerAdminForDetail) {
+  const handleStartEditDetailRoles = () => {
+    if (selectedWorkerAdminForDetail) {
       setDetailRolesDraft(selectedWorkerAdminForDetail.assignedRoles || []);
       setDetailCanDeleteDraft(Boolean(selectedWorkerAdminForDetail.canDeleteData));
       setDetailSaveSuccessMsg("");
     }
-    setIsDetailRolesPopoverOpen((prev) => !prev);
+    setIsEditingDetailRoles(true);
   };
-
-  useEffect(() => {
-    if (!isDetailRolesPopoverOpen) return;
-    const handleOutside = (e: MouseEvent) => {
-      if (
-        detailRolesPopoverRef.current &&
-        !detailRolesPopoverRef.current.contains(e.target as Node)
-      ) {
-        setIsDetailRolesPopoverOpen(false);
-      }
-    };
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsDetailRolesPopoverOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleOutside);
-    document.addEventListener("keydown", handleEsc);
-    return () => {
-      document.removeEventListener("mousedown", handleOutside);
-      document.removeEventListener("keydown", handleEsc);
-    };
-  }, [isDetailRolesPopoverOpen]);
 
   const handleSaveDetailRoles = async () => {
     if (!selectedWorkerAdminForDetail) return;
@@ -521,7 +498,7 @@ export default function DashboardContent({
 
       setDetailSaveSuccessMsg("Saved!");
       setTimeout(() => {
-        setIsDetailRolesPopoverOpen(false);
+        setIsEditingDetailRoles(false);
         setDetailSaveSuccessMsg("");
       }, 700);
     } catch (err: unknown) {
@@ -2718,6 +2695,13 @@ export default function DashboardContent({
       )}
 
       {/* -------------------------------------------------------------
+          TAB: ACTIVITY LOG (Master Admin only)
+          ------------------------------------------------------------- */}
+      {activeTab === "activity_log" && isMaster && (
+        <ActivityLogManager isMaster={isMaster} />
+      )}
+
+      {/* -------------------------------------------------------------
           TAB: WORKER ADMINS (Master Admin only)
           ------------------------------------------------------------- */}
       {activeTab === "worker_admins" && isMaster && (
@@ -3970,7 +3954,10 @@ export default function DashboardContent({
       {selectedWorkerAdminForDetail && (
         <div
           className="admin-modal-backdrop"
-          onClick={() => setSelectedWorkerAdminForDetail(null)}
+          onClick={() => {
+            setSelectedWorkerAdminForDetail(null);
+            setIsEditingDetailRoles(false);
+          }}
         >
           <div
             className="worker-admin-detail-modal"
@@ -4052,7 +4039,10 @@ export default function DashboardContent({
                 <button
                   type="button"
                   className="admin-modal-close"
-                  onClick={() => setSelectedWorkerAdminForDetail(null)}
+                  onClick={() => {
+                    setSelectedWorkerAdminForDetail(null);
+                    setIsEditingDetailRoles(false);
+                  }}
                   aria-label="Close modal"
                 >
                   ✕
@@ -4076,19 +4066,22 @@ export default function DashboardContent({
                   {selectedWorkerAdminForDetail.location || "UAE Office"}
                 </span>
               </div>
-              <div
-                className="worker-meta-item"
-                ref={detailRolesPopoverRef}
-                style={{ position: "relative" }}
-              >
+              <div className="worker-meta-item">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
                   <span className="meta-label">Last Login</span>
                   {isMaster && (
                     <button
                       type="button"
-                      onClick={handleToggleDetailRolesPopover}
+                      onClick={() => {
+                        if (!isEditingDetailRoles) {
+                          handleStartEditDetailRoles();
+                        } else {
+                          setIsEditingDetailRoles(false);
+                        }
+                      }}
                       className="worker-meta-edit-icon-btn"
-                      title="Edit Roles & Permissions"
+                      style={isEditingDetailRoles ? { backgroundColor: "#eff6ff", borderColor: "#2563eb", color: "#2563eb" } : undefined}
+                      title={isEditingDetailRoles ? "Back to Details" : "Edit Roles & Permissions"}
                       aria-label="Edit Roles & Permissions"
                     >
                       <svg
@@ -4121,225 +4114,132 @@ export default function DashboardContent({
                       })
                     : "Never"}
                 </span>
-
-                {/* Roles & Permissions Popover */}
-                {isDetailRolesPopoverOpen && (
-                  <div
-                    className="worker-roles-popover"
-                    style={{
-                      position: "absolute",
-                      top: "calc(100% + 8px)",
-                      right: 0,
-                      width: "320px",
-                      maxWidth: "calc(100vw - 36px)",
-                      backgroundColor: "#ffffff",
-                      borderRadius: "12px",
-                      boxShadow: "0 14px 35px -4px rgba(15, 23, 42, 0.18), 0 4px 12px -2px rgba(15, 23, 42, 0.08)",
-                      border: "1px solid #e2e8f0",
-                      padding: "14px 16px",
-                      zIndex: 100,
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "10px",
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "6px", borderBottom: "1px solid #f1f5f9" }}>
-                      <div>
-                        <div style={{ fontSize: "0.84rem", fontWeight: 700, color: "#0f172a" }}>
-                          Roles & Permissions
-                        </div>
-                        <div style={{ fontSize: "0.72rem", color: "#64748b" }}>
-                          Toggle dashboard modules for this worker
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setIsDetailRolesPopoverOpen(false)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: "#94a3b8",
-                          cursor: "pointer",
-                          fontSize: "14px",
-                          padding: "2px 4px",
-                          lineHeight: 1,
-                        }}
-                        aria-label="Close popover"
-                      >
-                        ✕
-                      </button>
-                    </div>
-
-                    {/* Roles with toggle switches */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "3px", maxHeight: "240px", overflowY: "auto" }}>
-                      {AVAILABLE_ADMIN_MODULES.map((mod) => {
-                        const isSelected = detailRolesDraft.includes(mod.id);
-                        return (
-                          <div
-                            key={mod.id}
-                            onClick={() => {
-                              setDetailRolesDraft((prev) =>
-                                prev.includes(mod.id)
-                                  ? prev.filter((r) => r !== mod.id)
-                                  : [...prev, mod.id]
-                              );
-                            }}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              padding: "7px 8px",
-                              borderRadius: "7px",
-                              cursor: "pointer",
-                              backgroundColor: isSelected ? "#eff6ff" : "transparent",
-                              transition: "background-color 0.15s ease",
-                            }}
-                          >
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                              <span style={{ fontSize: "1rem" }}>{mod.icon}</span>
-                              <div>
-                                <div style={{ fontSize: "0.8rem", fontWeight: 600, color: isSelected ? "#1d4ed8" : "#1e293b" }}>
-                                  {mod.label}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Toggle switch button */}
-                            <div
-                              role="switch"
-                              aria-checked={isSelected}
-                              style={{
-                                width: "36px",
-                                height: "20px",
-                                borderRadius: "10px",
-                                backgroundColor: isSelected ? "#2563eb" : "#cbd5e1",
-                                position: "relative",
-                                transition: "background-color 0.2s ease",
-                                flexShrink: 0,
-                              }}
-                            >
-                              <div
-                                style={{
-                                  width: "16px",
-                                  height: "16px",
-                                  borderRadius: "50%",
-                                  backgroundColor: "#ffffff",
-                                  position: "absolute",
-                                  top: "2px",
-                                  left: isSelected ? "18px" : "2px",
-                                  transition: "left 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.2)",
-                                }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Data deletion permission toggle */}
-                    <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "8px" }}>
-                      <div
-                        onClick={() => setDetailCanDeleteDraft((prev) => !prev)}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          padding: "7px 8px",
-                          borderRadius: "7px",
-                          cursor: "pointer",
-                          backgroundColor: detailCanDeleteDraft ? "#f0fdf4" : "transparent",
-                          transition: "background-color 0.15s ease",
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <span style={{ fontSize: "1rem" }}>🗑️</span>
-                          <span style={{ fontSize: "0.8rem", fontWeight: 600, color: detailCanDeleteDraft ? "#15803d" : "#1e293b" }}>
-                            Ability to Delete Data
-                          </span>
-                        </div>
-
-                        {/* Toggle switch button */}
-                        <div
-                          role="switch"
-                          aria-checked={detailCanDeleteDraft}
-                          style={{
-                            width: "36px",
-                            height: "20px",
-                            borderRadius: "10px",
-                            backgroundColor: detailCanDeleteDraft ? "#16a34a" : "#cbd5e1",
-                            position: "relative",
-                            transition: "background-color 0.2s ease",
-                            flexShrink: 0,
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: "16px",
-                              height: "16px",
-                              borderRadius: "50%",
-                              backgroundColor: "#ffffff",
-                              position: "absolute",
-                              top: "2px",
-                              left: detailCanDeleteDraft ? "18px" : "2px",
-                              transition: "left 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.2)",
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Footer Actions */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", borderTop: "1px solid #f1f5f9", paddingTop: "10px", marginTop: "2px" }}>
-                      <button
-                        type="button"
-                        onClick={() => setIsDetailRolesPopoverOpen(false)}
-                        style={{
-                          padding: "5px 12px",
-                          fontSize: "0.78rem",
-                          fontWeight: 500,
-                          borderRadius: "6px",
-                          border: "1px solid #e2e8f0",
-                          backgroundColor: "#ffffff",
-                          color: "#64748b",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSaveDetailRoles}
-                        disabled={isSavingDetailRoles}
-                        style={{
-                          padding: "5px 14px",
-                          fontSize: "0.78rem",
-                          fontWeight: 600,
-                          borderRadius: "6px",
-                          border: "1px solid #2563eb",
-                          backgroundColor: detailSaveSuccessMsg ? "#16a34a" : "#2563eb",
-                          color: "#ffffff",
-                          cursor: isSavingDetailRoles ? "wait" : "pointer",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "5px",
-                        }}
-                      >
-                        {isSavingDetailRoles
-                          ? "Saving..."
-                          : detailSaveSuccessMsg
-                          ? "✓ Saved"
-                          : "Save"}
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Invoices Statistics */}
+            {isEditingDetailRoles ? (
+              <div style={{ padding: "20px 24px 24px", display: "flex", flexDirection: "column", gap: "14px", overflowY: "auto" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #f1f5f9", paddingBottom: "10px" }}>
+                  <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a" }}>
+                    Edit Roles & Permissions
+                  </div>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      type="button"
+                      onClick={() => setDetailRolesDraft(AVAILABLE_ADMIN_MODULES.map((m) => m.id))}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#2563eb",
+                        fontSize: "0.76rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >
+                      Select All
+                    </button>
+                    <span style={{ color: "#cbd5e1" }}>•</span>
+                    <button
+                      type="button"
+                      onClick={() => setDetailRolesDraft([])}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#64748b",
+                        fontSize: "0.76rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+
+                <div className="worker-role-list">
+                  {AVAILABLE_ADMIN_MODULES.map((mod) => {
+                    const isChecked = detailRolesDraft.includes(mod.id);
+                    return (
+                      <div
+                        key={mod.id}
+                        className="worker-role-list-item"
+                        onClick={() => {
+                          setDetailRolesDraft((prev) =>
+                            isChecked
+                              ? prev.filter((r) => r !== mod.id)
+                              : [...prev, mod.id]
+                          );
+                        }}
+                      >
+                        <div className="role-info">
+                          <span className="role-icon">{mod.icon}</span>
+                          <span className="role-label">{mod.label}</span>
+                        </div>
+
+                        <div
+                          role="switch"
+                          aria-checked={isChecked}
+                          className={`worker-role-toggle ${isChecked ? "active" : ""}`}
+                        >
+                          <div className="worker-role-toggle-thumb" />
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Ability to Delete Data Option */}
+                  <div
+                    className="worker-role-list-item"
+                    onClick={() => setDetailCanDeleteDraft((prev) => !prev)}
+                  >
+                    <div className="role-info">
+                      <span className="role-icon">🗑️</span>
+                      <span
+                        className="role-label"
+                        style={{ color: detailCanDeleteDraft ? "#dc2626" : "#1e293b" }}
+                      >
+                        Ability to Delete Data
+                      </span>
+                    </div>
+
+                    <div
+                      role="switch"
+                      aria-checked={detailCanDeleteDraft}
+                      className={`worker-role-toggle delete-toggle ${detailCanDeleteDraft ? "active" : ""}`}
+                    >
+                      <div className="worker-role-toggle-thumb" />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "10px", marginTop: "10px", paddingTop: "14px", borderTop: "1px solid #f1f5f9" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingDetailRoles(false)}
+                    className="flat-secondary-btn"
+                    disabled={isSavingDetailRoles}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveDetailRoles}
+                    className="capsule-btn-black"
+                    disabled={isSavingDetailRoles}
+                  >
+                    {isSavingDetailRoles
+                      ? "Saving..."
+                      : detailSaveSuccessMsg
+                      ? "✓ Saved"
+                      : "Save Roles"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Invoices Statistics */}
             <div className="worker-stats-row">
               <div className="worker-stat-box">
                 <span className="worker-stat-num">{workerInvoices.length}</span>
@@ -4501,8 +4401,10 @@ export default function DashboardContent({
                 </div>
               )}
             </div>
-          </div>
-        </div>
+          </>
+        )}
+      </div>
+    </div>
       )}
 
       {/* Printable Invoice Modal for Worker Admin */}

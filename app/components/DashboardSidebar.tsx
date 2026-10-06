@@ -5,6 +5,7 @@ import Link from "next/link";
 
 export type SidebarTab =
   | "overview"
+  | "activity_log"
   | "worker_admins"
   | "enquiries"
   | "whatsapp_enquiries"
@@ -58,7 +59,7 @@ export default function DashboardSidebar({
 
   const canAccessTab = (tab: string): boolean => {
     if (isMaster) return true;
-    if (tab === "worker_admins") return false;
+    if (tab === "worker_admins" || tab === "activity_log") return false;
     const roles = user?.assignedRoles;
     if (!roles || roles.length === 0) {
       return ["clients", "enquiries", "whatsapp_enquiries", "accounting", "overview"].includes(tab);
@@ -349,6 +350,28 @@ export default function DashboardSidebar({
                 <path d="M9 21V9" />
               </svg>
               <span>Website Edit</span>
+            </div>
+          </button>
+        )}
+
+        {/* Activity Log (Master Admin only) */}
+        {isMaster && (
+          <button
+            type="button"
+            onClick={() => onSelectTab("activity_log")}
+            className={`sidebar-menu-btn ${activeTab === "activity_log" ? "active" : ""}`}
+          >
+            <div className="sidebar-menu-left">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+              <span>Activity Log</span>
             </div>
           </button>
         )}

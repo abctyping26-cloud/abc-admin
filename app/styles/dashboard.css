@@ -10677,7 +10677,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 0;
+  padding: 12px 6px;
   cursor: pointer;
   background-color: transparent;
   border-bottom: 1px solid #f1f5f9;
@@ -10750,16 +10750,531 @@
   left: 18px;
 }
 
+/* =========================================================================
+   ACTIVITY LOG / AUDIT TRAIL STYLES
+   ========================================================================= */
+.activity-log-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
 
+.activity-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
 
+.activity-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 14px;
+}
 
+.activity-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+}
 
+.activity-pill-btn {
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
 
+.activity-pill-btn:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
 
+.activity-pill-btn.active {
+  background-color: var(--primary-navy, #152445);
+  color: #ffffff;
+  border-color: var(--primary-navy, #152445);
+}
 
+.activity-list-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
 
+.activity-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #f1f5f9;
+  gap: 16px;
+  transition: background-color 0.15s ease;
+}
 
+.activity-item-row:last-child {
+  border-bottom: none;
+}
 
+.activity-item-row:hover {
+  background-color: #f8fafc;
+}
 
+.activity-item-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
 
+.activity-badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.activity-badge-invoices {
+  background-color: #e0e7ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+}
+
+.activity-badge-whatsapp_files {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.activity-badge-admins {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.activity-badge-enquiries {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.activity-badge-expenses {
+  background-color: #ffe4e6;
+  color: #9f1239;
+  border: 1px solid #fecdd3;
+}
+
+.activity-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.activity-item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.activity-item-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.activity-item-actor {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.activity-item-actor strong {
+  color: #334155;
+}
+
+.activity-item-desc {
+  font-size: 0.8rem;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-item-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.activity-item-time {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.activity-btn-inspect {
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.activity-btn-inspect:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.activity-btn-file {
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+  background-color: #10b981;
+  color: #ffffff;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.activity-btn-file:hover {
+  background-color: #059669;
+}
+
+.activity-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.activity-modal-box {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.activity-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.activity-modal-body {
+  padding: 18px 20px;
+  max-height: 65vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.activity-modal-footer {
+  padding: 12px 20px;
+  background-color: #f8fafc;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Dark Mode Overrides */
+[data-theme="dark"] .activity-filter-bar,
+.dark .activity-filter-bar,
+[data-theme="dark"] .activity-list-card,
+.dark .activity-list-card,
+[data-theme="dark"] .activity-modal-box,
+.dark .activity-modal-box {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .activity-pill-btn,
+.dark .activity-pill-btn {
+  background-color: #0f172a;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .activity-pill-btn.active,
+.dark .activity-pill-btn.active {
+  background-color: #38bdf8;
+  color: #0f172a;
+  border-color: #38bdf8;
+}
+
+[data-theme="dark"] .activity-item-row,
+.dark .activity-item-row,
+[data-theme="dark"] .activity-modal-header,
+.dark .activity-modal-header,
+[data-theme="dark"] .activity-modal-footer,
+.dark .activity-modal-footer {
+  border-color: #334155;
+}
+
+[data-theme="dark"] .activity-item-row:hover,
+.dark .activity-item-row:hover,
+[data-theme="dark"] .activity-modal-footer,
+.dark .activity-modal-footer {
+  background-color: #0f172a;
+}
+
+[data-theme="dark"] .activity-item-title,
+.dark .activity-item-title {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .activity-btn-inspect,
+.dark .activity-btn-inspect {
+  background-color: #0f172a;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+/* ==========================================================================
+   Client Expiration Timer & Red Border Styles
+   ========================================================================== */
+
+/* Red Border for Table Rows (Reaching & Expired) */
+.admin-table tbody tr.client-table-row.row-expiring td {
+  background-color: #fff5f5 !important;
+  border-top: 2px solid #ef4444 !important;
+  border-bottom: 2px solid #ef4444 !important;
+}
+
+.admin-table tbody tr.client-table-row.row-expiring td:first-child {
+  border-left: 2px solid #ef4444 !important;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+
+.admin-table tbody tr.client-table-row.row-expiring td:last-child {
+  border-right: 2px solid #ef4444 !important;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.admin-table tbody tr.client-table-row.row-expiring:hover td {
+  background-color: #fee2e2 !important;
+}
+
+/* Red Border for Mobile Cards (Reaching & Expired) */
+.client-mobile-card.card-expiring {
+  border: 2px solid #ef4444 !important;
+  box-shadow: 0 0 0 1px #ef4444, 0 4px 14px rgba(239, 68, 68, 0.12) !important;
+  background-color: #fff5f5 !important;
+}
+
+.client-mobile-card.card-expiring .client-mobile-card-header {
+  background-color: #fff5f5 !important;
+}
+
+.client-mobile-card.card-expiring .client-mobile-card-header:hover {
+  background-color: #fee2e2 !important;
+}
+
+/* Expiration Timer Badges */
+.client-timer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.80rem;
+  line-height: 1.3;
+}
+
+.client-timer-badge.normal {
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.client-timer-badge.reaching {
+  background-color: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+}
+
+.client-timer-badge.expired {
+  background-color: #fef2f2;
+  border: 1.5px solid #ef4444;
+  color: #991b1b;
+}
+
+.client-timer-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.timer-status-text {
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+.timer-date-sub {
+  font-size: 0.70rem;
+  color: #64748b;
+}
+
+.client-timer-badge.reaching .timer-date-sub,
+.client-timer-badge.expired .timer-date-sub {
+  color: #dc2626;
+}
+
+.timer-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  animation: timerPulse 1.8s infinite;
+}
+
+@keyframes timerPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+/* Mobile header timer pill */
+.client-mobile-timer-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.client-mobile-timer-pill.normal {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.client-mobile-timer-pill.reaching {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+
+.client-mobile-timer-pill.expired {
+  background-color: #ef4444;
+  color: #ffffff;
+}
+
+/* Legend Dot Red (for Toolbar filter pill) */
+.legend-dot.red {
+  background-color: #ef4444;
+  box-shadow: 0 0 5px rgba(239, 68, 68, 0.6);
+}
+
+/* Quick timer preset buttons & clear button */
+.timer-presets-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.presets-label {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.preset-pill-btn {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 9999px;
+  padding: 2px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preset-pill-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.timer-clear-btn {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.timer-clear-btn:hover {
+  text-decoration: underline;
+}
+
+.admin-form-helper-text {
+  display: block;
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.badge-timer-reaching {
+  background-color: #fef2f2 !important;
+  color: #b91c1c !important;
+  border: 1px solid #fca5a5 !important;
+}
+
+.badge-timer-normal {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #cbd5e1 !important;
+}
 

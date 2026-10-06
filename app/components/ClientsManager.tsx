@@ -29,6 +29,7 @@ export interface ClientItem {
   address: string;
   pin: string;
   completed: boolean;
+  expirationTimer?: string | null;
   photo?: ClientPhoto | null;
   files: ClientFile[];
   fileCount: number;
@@ -134,11 +135,122 @@ function FileThumbnail({ file }: { file: ClientFile }) {
   );
 }
 
+export interface ClientTimerStatus {
+  hasTimer: boolean;
+  isExpiringSoon: boolean;
+  isExpired: boolean;
+  showRedBorder: boolean;
+  formattedDate: string;
+  statusLabel: string;
+  statusType: "none" | "normal" | "reaching" | "expired";
+}
+
+export const toDateTimeLocal = (dateStr?: string | null): string => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+export const getClientTimerStatus = (expirationTimer?: string | null): ClientTimerStatus => {
+  if (!expirationTimer) {
+    return {
+      hasTimer: false,
+      isExpiringSoon: false,
+      isExpired: false,
+      showRedBorder: false,
+      formattedDate: "",
+      statusLabel: "",
+      statusType: "none",
+    };
+  }
+
+  const expiryDate = new Date(expirationTimer);
+  if (isNaN(expiryDate.getTime())) {
+    return {
+      hasTimer: false,
+      isExpiringSoon: false,
+      isExpired: false,
+      showRedBorder: false,
+      formattedDate: "",
+      statusLabel: "",
+      statusType: "none",
+    };
+  }
+
+  const now = new Date();
+  const diffMs = expiryDate.getTime() - now.getTime();
+  const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+
+  const isExpired = diffMs <= 0;
+  const isExpiringSoon = !isExpired && diffMs <= twoDaysMs;
+  // Red border starts 2 days before timer reaches, and stays red even when reached!
+  const showRedBorder = isExpiringSoon || isExpired;
+
+  const formattedDate = expiryDate.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  let statusLabel = "";
+  let statusType: "none" | "normal" | "reaching" | "expired" = "normal";
+
+  if (isExpired) {
+    statusType = "expired";
+    const hoursAgo = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60));
+    const daysAgo = Math.floor(hoursAgo / 24);
+    if (daysAgo >= 1) {
+      statusLabel = `Expired (${daysAgo}d ago)`;
+    } else if (hoursAgo >= 1) {
+      statusLabel = `Expired (${hoursAgo}h ago)`;
+    } else {
+      statusLabel = "Timer Reached";
+    }
+  } else if (isExpiringSoon) {
+    statusType = "reaching";
+    const hoursLeft = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutesLeft = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    if (hoursLeft >= 24) {
+      const days = Math.floor(hoursLeft / 24);
+      const remH = hoursLeft % 24;
+      statusLabel = `Reaching (${days}d ${remH}h left)`;
+    } else if (hoursLeft >= 1) {
+      statusLabel = `Reaching (${hoursLeft}h ${minutesLeft}m left)`;
+    } else {
+      statusLabel = `Reaching (${Math.max(1, minutesLeft)}m left)`;
+    }
+  } else {
+    statusType = "normal";
+    const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    statusLabel = `${daysLeft} days left`;
+  }
+
+  return {
+    hasTimer: true,
+    isExpiringSoon,
+    isExpired,
+    showRedBorder,
+    formattedDate,
+    statusLabel,
+    statusType,
+  };
+};
+
 export default function ClientsManager({ user, isMaster }: ClientsManagerProps) {
   const [clients, setClients] = useState<ClientItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterTab, setFilterTab] = useState<"all" | "in_progress" | "completed" | "website" | "manual">("all");
+  const [filterTab, setFilterTab] = useState<"all" | "in_progress" | "completed" | "website" | "manual" | "timer">("all");
 
   const canDeleteClient = (client: ClientItem | null): boolean => {
     if (!client) return false;
@@ -160,6 +272,7 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
     address: "",
     pin: "",
     completed: false,
+    expirationTimer: "",
   });
 
   // Selected Client (Drawer / Details Modal)
@@ -188,6 +301,7 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
     address: "",
     pin: "",
     completed: false,
+    expirationTimer: "",
   });
 
   // File Upload State
@@ -298,11 +412,12 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
 
   // Filter clients locally for instant responsiveness
   const filteredClients = clients.filter((c) => {
-    // Status / source filter
+    // Status / source / timer filter
     if (filterTab === "in_progress" && c.completed) return false;
     if (filterTab === "completed" && !c.completed) return false;
     if (filterTab === "website" && c.source !== "website") return false;
     if (filterTab === "manual" && c.source !== "manual") return false;
+    if (filterTab === "timer" && !c.expirationTimer) return false;
 
     // Search query filter
     if (!searchQuery.trim()) return true;
@@ -321,6 +436,7 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
   const totalCount = clients.length;
   const completedCount = clients.filter((c) => c.completed).length;
   const inProgressCount = totalCount - completedCount;
+  const timerCount = clients.filter((c) => Boolean(c.expirationTimer)).length;
 
   // Quick toggle completed status
   const handleToggleCompleted = async (clientId: string, currentCompleted: boolean, e?: React.MouseEvent) => {
@@ -395,6 +511,7 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
         address: "",
         pin: "",
         completed: false,
+        expirationTimer: "",
       });
     } catch (err: unknown) {
       setAddError(err instanceof Error ? err.message : "Network error. Please try again.");
@@ -413,6 +530,7 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
       address: client.address || "",
       pin: client.pin || "",
       completed: client.completed,
+      expirationTimer: toDateTimeLocal(client.expirationTimer),
     });
     setUploadError("");
     setSaveSuccess(false);
@@ -433,6 +551,7 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
             address: json.data.client.address || "",
             pin: json.data.client.pin || "",
             completed: json.data.client.completed,
+            expirationTimer: toDateTimeLocal(json.data.client.expirationTimer),
           });
         }
       }
@@ -793,6 +912,14 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
                   <span className={`client-status-badge ${selectedClient.completed ? "badge-completed" : "badge-in-progress"}`}>
                     {selectedClient.completed ? "✓ Completed" : "⏳ In Progress"}
                   </span>
+                  {selectedClient.expirationTimer && (() => {
+                    const heroStatus = getClientTimerStatus(selectedClient.expirationTimer);
+                    return (
+                      <span className={`client-status-badge ${heroStatus.showRedBorder ? "badge-timer-reaching" : "badge-timer-normal"}`}>
+                        ⏰ {heroStatus.statusLabel}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 <div className="client-hero-meta">
@@ -921,6 +1048,67 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
                       <span>Mark Service Completed</span>
                     </label>
                   </div>
+                </div>
+
+                <div className="admin-form-field" style={{ marginTop: "14px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <label className="admin-form-label" style={{ marginBottom: 0 }}>Expiration Timer</label>
+                    {editFormData.expirationTimer && (
+                      <button
+                        type="button"
+                        onClick={() => setEditFormData({ ...editFormData, expirationTimer: "" })}
+                        className="timer-clear-btn"
+                        title="Remove expiration timer"
+                      >
+                        ✕ Clear Timer
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="datetime-local"
+                    value={editFormData.expirationTimer}
+                    onChange={(e) => setEditFormData({ ...editFormData, expirationTimer: e.target.value })}
+                    className="admin-form-input"
+                  />
+                  <div className="timer-presets-row">
+                    <span className="presets-label">Quick set:</span>
+                    <button
+                      type="button"
+                      className="preset-pill-btn"
+                      onClick={() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() + 2);
+                        setEditFormData({ ...editFormData, expirationTimer: toDateTimeLocal(d.toISOString()) });
+                      }}
+                    >
+                      +2 Days
+                    </button>
+                    <button
+                      type="button"
+                      className="preset-pill-btn"
+                      onClick={() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() + 7);
+                        setEditFormData({ ...editFormData, expirationTimer: toDateTimeLocal(d.toISOString()) });
+                      }}
+                    >
+                      +7 Days
+                    </button>
+                    <button
+                      type="button"
+                      className="preset-pill-btn"
+                      onClick={() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() + 30);
+                        setEditFormData({ ...editFormData, expirationTimer: toDateTimeLocal(d.toISOString()) });
+                      }}
+                    >
+                      +30 Days
+                    </button>
+                  </div>
+                  <span className="admin-form-helper-text">
+                    Shows a red border in the table starting 2 days before the timer reaches, and stays red when reached. No client data is altered on expiry.
+                  </span>
                 </div>
 
                 <div style={{ marginTop: "20px" }}>
@@ -1398,6 +1586,67 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
               </div>
             </div>
 
+            <div className="admin-form-field" style={{ marginTop: "14px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                <label className="admin-form-label" style={{ marginBottom: 0 }}>Expiration Timer (Optional)</label>
+                {newClient.expirationTimer && (
+                  <button
+                    type="button"
+                    onClick={() => setNewClient({ ...newClient, expirationTimer: "" })}
+                    className="timer-clear-btn"
+                    title="Remove expiration timer"
+                  >
+                    ✕ Clear Timer
+                  </button>
+                )}
+              </div>
+              <input
+                type="datetime-local"
+                value={newClient.expirationTimer}
+                onChange={(e) => setNewClient({ ...newClient, expirationTimer: e.target.value })}
+                className="admin-form-input"
+              />
+              <div className="timer-presets-row">
+                <span className="presets-label">Quick set:</span>
+                <button
+                  type="button"
+                  className="preset-pill-btn"
+                  onClick={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + 2);
+                    setNewClient({ ...newClient, expirationTimer: toDateTimeLocal(d.toISOString()) });
+                  }}
+                >
+                  +2 Days
+                </button>
+                <button
+                  type="button"
+                  className="preset-pill-btn"
+                  onClick={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + 7);
+                    setNewClient({ ...newClient, expirationTimer: toDateTimeLocal(d.toISOString()) });
+                  }}
+                >
+                  +7 Days
+                </button>
+                <button
+                  type="button"
+                  className="preset-pill-btn"
+                  onClick={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + 30);
+                    setNewClient({ ...newClient, expirationTimer: toDateTimeLocal(d.toISOString()) });
+                  }}
+                >
+                  +30 Days
+                </button>
+              </div>
+              <span className="admin-form-helper-text">
+                Starts showing a red border 2 days before the timer reaches. Remains red when reached without modifying client data.
+              </span>
+            </div>
+
             <div className="admin-modal-actions" style={{ marginTop: "24px", justifyContent: "flex-end" }}>
               <button
                 type="button"
@@ -1443,6 +1692,14 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
           >
             <span className="legend-dot green" />
             Completed <span className="pill-count">{completedCount}</span>
+          </button>
+          <button
+            type="button"
+            className={`client-filter-pill ${filterTab === "timer" ? "active" : ""}`}
+            onClick={() => setFilterTab("timer")}
+          >
+            <span className="legend-dot red" />
+            Timer <span className="pill-count">{timerCount}</span>
           </button>
           <button
             type="button"
@@ -1529,6 +1786,9 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
                   <th>
                     <span className="th-inner">Source</span>
                   </th>
+                  <th>
+                    <span className="th-inner">Expiration Timer</span>
+                  </th>
                   <th style={{ textAlign: "center" }}>
                     <span className="th-inner" style={{ justifyContent: "center" }}>Status</span>
                   </th>
@@ -1543,12 +1803,13 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
                   const initials = client.name
                     ? client.name.substring(0, 2).toUpperCase()
                     : client.identifier.substring(0, 2).toUpperCase();
+                  const timerStatus = getClientTimerStatus(client.expirationTimer);
 
                   return (
                     <tr
                       key={client.id}
                       onClick={() => openClientDetails(client)}
-                      className="client-table-row"
+                      className={`client-table-row ${timerStatus.showRedBorder ? "row-expiring" : ""}`}
                       style={{ cursor: "pointer" }}
                     >
                       {/* Avatar & Name */}
@@ -1622,6 +1883,21 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
                         )}
                       </td>
 
+                      {/* Expiration Timer */}
+                      <td>
+                        {timerStatus.hasTimer ? (
+                          <div className={`client-timer-badge ${timerStatus.statusType}`}>
+                            {timerStatus.showRedBorder && <span className="timer-pulse-dot" />}
+                            <div className="client-timer-details">
+                              <span className="timer-status-text">{timerStatus.statusLabel}</span>
+                              <span className="timer-date-sub">{timerStatus.formattedDate}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>—</span>
+                        )}
+                      </td>
+
                       {/* Status: Color dot only */}
                       <td style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
                         <button
@@ -1667,11 +1943,12 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
               const initials = client.name
                 ? client.name.substring(0, 2).toUpperCase()
                 : client.identifier.substring(0, 2).toUpperCase();
+              const timerStatus = getClientTimerStatus(client.expirationTimer);
 
               return (
                 <div
                   key={`mobile-${client.id}`}
-                  className={`client-mobile-card ${isExpanded ? "is-expanded" : ""}`}
+                  className={`client-mobile-card ${isExpanded ? "is-expanded" : ""} ${timerStatus.showRedBorder ? "card-expiring" : ""}`}
                 >
                   {/* Shrunken Header: Name, Avatar, Status Dot & Angle Down Chevron */}
                   <div
@@ -1697,6 +1974,14 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
                     </div>
 
                     <div className="client-mobile-header-right">
+                      {timerStatus.hasTimer && (
+                        <span
+                          className={`client-mobile-timer-pill ${timerStatus.statusType}`}
+                          title={`Expiration Timer: ${timerStatus.statusLabel}`}
+                        >
+                          ⏰ {timerStatus.statusLabel}
+                        </span>
+                      )}
                       <span
                         className={`client-mobile-status-dot ${client.completed ? "status-green" : "status-orange"}`}
                         title={client.completed ? "Completed" : "In Progress"}
@@ -1781,6 +2066,22 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
                           )}
                         </div>
                       </div>
+
+                      {/* Expiration Timer */}
+                      {timerStatus.hasTimer && (
+                        <div className="client-mobile-detail-row">
+                          <span className="detail-label">Expiration Timer</span>
+                          <div className="detail-value">
+                            <div className={`client-timer-badge ${timerStatus.statusType}`}>
+                              {timerStatus.showRedBorder && <span className="timer-pulse-dot" />}
+                              <div className="client-timer-details">
+                                <span className="timer-status-text">{timerStatus.statusLabel}</span>
+                                <span className="timer-date-sub">{timerStatus.formattedDate}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Status Toggle */}
                       <div className="client-mobile-detail-row">
