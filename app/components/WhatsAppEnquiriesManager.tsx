@@ -70,6 +70,9 @@ interface WhatsAppEnquiriesManagerProps {
   onPendingCountChange?: (count: number) => void;
 }
 
+const GREETING_TEMPLATE_TEXT =
+  "Hello! Thank you for contacting ABC Typing Services. We are reaching out regarding your enquiry. Please reply to this message so our team can assist you with your request.";
+
 export interface QuickReplyItem {
   _id: string;
   title: string;
@@ -116,6 +119,7 @@ export default function WhatsAppEnquiriesManager({
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [directPhoneInput, setDirectPhoneInput] = useState("");
+  const [directCountryCode, setDirectCountryCode] = useState("971");
   const [showDirectPhoneBox, setShowDirectPhoneBox] = useState(false);
 
   // Quick Replies Dynamic State
@@ -309,14 +313,21 @@ export default function WhatsAppEnquiriesManager({
     const messageToSend = replyText.trim();
     const phoneToUse = selectedPhone.replace(/\D/g, "");
 
+    const isWindowActive = activeChat?.isWindowOpen ?? false;
+    const bodyPayload: { customerPhone: string; text: string; templateName?: string } = {
+      customerPhone: phoneToUse,
+      text: messageToSend,
+    };
+
+    if (!isWindowActive) {
+      bodyPayload.templateName = "enquiry_greeting";
+    }
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/whatsapp/reply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerPhone: phoneToUse,
-          text: messageToSend,
-        }),
+        body: JSON.stringify(bodyPayload),
       });
 
       const json = await res.json();
@@ -369,9 +380,22 @@ export default function WhatsAppEnquiriesManager({
   // Start chat with direct phone input
   const handleStartDirectChat = (e: React.FormEvent) => {
     e.preventDefault();
-    const clean = directPhoneInput.replace(/\D/g, "");
-    if (!clean) return;
-    setSelectedPhone(clean);
+    let num = directPhoneInput.replace(/\D/g, "");
+    if (!num) return;
+
+    // Strip leading zeros if typed (e.g., 0501234567 -> 501234567)
+    if (num.startsWith("0")) {
+      num = num.replace(/^0+/, "");
+    }
+
+    // Prepend country code if not already included
+    let fullPhone = num;
+    if (!fullPhone.startsWith(directCountryCode)) {
+      fullPhone = `${directCountryCode}${num}`;
+    }
+
+    setSelectedPhone(fullPhone);
+    setReplyText(GREETING_TEMPLATE_TEXT);
     setMobileChatOpen(true);
     setDirectPhoneInput("");
     setShowDirectPhoneBox(false);
@@ -1048,9 +1072,18 @@ export default function WhatsAppEnquiriesManager({
               {/* Direct Phone Input Drawer (Mobile) */}
               {showDirectPhoneBox && (
                 <form onSubmit={handleStartDirectChat} className="wa-list-direct-box wa-mobile-direct-box">
+                  <select
+                    value={directCountryCode}
+                    onChange={(e) => setDirectCountryCode(e.target.value)}
+                    className="wa-list-direct-select"
+                    aria-label="Select Country Code"
+                  >
+                    <option value="971">🇦🇪 +971</option>
+                    <option value="91">🇮🇳 +91</option>
+                  </select>
                   <input
-                    type="text"
-                    placeholder="Phone with country code (e.g. 971501234567)"
+                    type="tel"
+                    placeholder={directCountryCode === "971" ? "50 123 4567" : "98765 43210"}
                     value={directPhoneInput}
                     onChange={(e) => setDirectPhoneInput(e.target.value)}
                     className="wa-list-direct-input"
@@ -1183,9 +1216,18 @@ export default function WhatsAppEnquiriesManager({
                 {/* Direct Phone Input Drawer */}
                 {showDirectPhoneBox && (
                   <form onSubmit={handleStartDirectChat} className="wa-list-direct-box">
+                    <select
+                      value={directCountryCode}
+                      onChange={(e) => setDirectCountryCode(e.target.value)}
+                      className="wa-list-direct-select"
+                      aria-label="Select Country Code"
+                    >
+                      <option value="971">🇦🇪 +971</option>
+                      <option value="91">🇮🇳 +91</option>
+                    </select>
                     <input
-                      type="text"
-                      placeholder="Phone with country code (e.g. 971501234567)"
+                      type="tel"
+                      placeholder={directCountryCode === "971" ? "50 123 4567" : "98765 43210"}
                       value={directPhoneInput}
                       onChange={(e) => setDirectPhoneInput(e.target.value)}
                       className="wa-list-direct-input"
@@ -1437,11 +1479,16 @@ export default function WhatsAppEnquiriesManager({
                               <div className="wa-bubble-footer">
                                 <span className="wa-bubble-time">{formatDateTime(msg.timestamp)}</span>
                                 {!isIncoming && (
-                                  <span className="wa-bubble-status">
+                                  <span
+                                    className={`wa-bubble-status ${msg.status === "failed" ? "failed" : ""}`}
+                                    title={msg.status === "failed" ? "Message delivery failed by Meta/WhatsApp" : `Status: ${msg.status}`}
+                                  >
                                     {msg.status === "read"
                                       ? "✓✓"
                                       : msg.status === "delivered"
                                       ? "✓✓"
+                                      : msg.status === "failed"
+                                      ? "⚠️ Failed"
                                       : "✓"}
                                   </span>
                                 )}

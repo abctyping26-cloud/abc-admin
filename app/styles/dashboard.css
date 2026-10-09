@@ -4314,6 +4314,23 @@
   border-radius: 6px;
 }
 
+.wa-list-direct-select {
+  padding: 6px 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid #86efac;
+  border-radius: 4px;
+  outline: none;
+  background-color: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.wa-list-direct-select:focus {
+  border-color: #16a34a;
+}
+
 .wa-list-direct-input {
   flex: 1;
   min-width: 0;
