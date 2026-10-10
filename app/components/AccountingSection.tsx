@@ -9,7 +9,7 @@ import ReceiptVoucherView from "./ReceiptVoucherView";
 import IncomeView from "./IncomeView";
 import ExpenseView from "./ExpenseView";
 import BankTransactionView from "./BankTransactionView";
-import BankManager from "./BankManager";
+import CashTransactionView from "./CashTransactionView";
 export type AccountingCategory = "masters" | "activities" | "reports" | "finance";
 export type ActivitiesAction =
   | "invoice"
@@ -18,7 +18,7 @@ export type ActivitiesAction =
   | "payment_voucher"
   | "receipt_voucher";
 
-export type FinanceAction = "income" | "expense" | "bank_transaction";
+export type FinanceAction = "income" | "expense" | "bank_transaction" | "cash_transaction";
 
 export interface CurrentAdminUser {
   id?: string;
@@ -236,6 +236,8 @@ export default function AccountingSection({
             <ExpenseView user={user} onClose={() => setActiveFinanceAction(null)} getAuthHeaders={getAuthHeaders} />
           ) : activeCategory === "finance" && activeFinanceAction === "bank_transaction" ? (
             <BankTransactionView user={user} onClose={() => setActiveFinanceAction(null)} getAuthHeaders={getAuthHeaders} />
+          ) : activeCategory === "finance" && activeFinanceAction === "cash_transaction" ? (
+            <CashTransactionView user={user} onClose={() => setActiveFinanceAction(null)} getAuthHeaders={getAuthHeaders} />
           ) : (
             <div className="accounting-empty-space" />
           )}
@@ -459,6 +461,27 @@ export default function AccountingSection({
                 </svg>
               </div>
               <span className="cube-label">Bank Tx</span>
+            </button>
+
+            {/* Cash Transaction */}
+            <button
+              type="button"
+              className={`accounting-cube-btn ${activeFinanceAction === "cash_transaction" ? "active" : ""}`}
+              onClick={() => setActiveFinanceAction((prev: FinanceAction | null) => (prev === "cash_transaction" ? null : "cash_transaction"))}
+              title="Cash Transaction"
+            >
+              <div className="cube-icon-wrapper">
+                <svg viewBox="0 0 36 36" width="28" height="28" fill="none" aria-hidden="true">
+                  <rect x="6" y="10" width="24" height="16" rx="2" fill="#ffffff" stroke="#16a34a" strokeWidth="1.5" />
+                  <circle cx="18" cy="18" r="4" fill="#dcfce7" stroke="#16a34a" strokeWidth="1.2" />
+                  <text x="18" y="20.5" textAnchor="middle" fill="#15803d" fontSize="6.5" fontWeight="bold">
+                    $
+                  </text>
+                  <circle cx="10" cy="18" r="1.5" fill="#16a34a" />
+                  <circle cx="26" cy="18" r="1.5" fill="#16a34a" />
+                </svg>
+              </div>
+              <span className="cube-label">Cash Tx</span>
             </button>
           </aside>
         )}

@@ -14,6 +14,7 @@ import IncomesManager from "./IncomesManager";
 import ExpensesManager from "./ExpensesManager";
 import InvoicesManager from "./InvoicesManager";
 import BankManager from "./BankManager";
+import CashManager from "./CashManager";
 import PersonnelManager from "./PersonnelManager";
 import ActivityLogManager from "./ActivityLogManager";
 import PrintableInvoiceModal, { PrintableInvoiceData } from "./PrintableInvoiceModal";
@@ -3726,6 +3727,14 @@ export default function DashboardContent({
         <BankManager
           getAuthHeaders={getAdminAuthHeaders}
           user={user}
+        />
+      )}
+
+      {activeTab === "accounting_cash" && (
+        <CashManager
+          getAuthHeaders={getAdminAuthHeaders}
+          user={user}
+          onNavigateTab={onNavigateTab}
         />
       )}
 
