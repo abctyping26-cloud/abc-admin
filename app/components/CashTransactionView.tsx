@@ -45,9 +45,7 @@ export default function CashTransactionView({
   >("Cash In");
   const [txDate, setTxDate] = useState(() => new Date().toISOString().slice(0, 10));
 
-  // Dynamic Cash Registers loaded from real MongoDB
-  const [cashAccounts, setCashAccounts] = useState<string[]>([]);
-  const [accountName, setAccountName] = useState("Main Cash");
+  const accountName = "Main Cash";
 
   // Dynamic Banks (for Deposit to Bank / Withdrawal from Bank)
   const [banks, setBanks] = useState<string[]>([]);
@@ -70,11 +68,6 @@ export default function CashTransactionView({
   const [newCustPhone, setNewCustPhone] = useState("");
   const [newCustEmail, setNewCustEmail] = useState("");
   const [isSavingCust, setIsSavingCust] = useState(false);
-
-  // Quick Add Cash Register state
-  const [isAddingAccount, setIsAddingAccount] = useState(false);
-  const [newAccountName, setNewAccountName] = useState("");
-  const [isSavingAccount, setIsSavingAccount] = useState(false);
 
   // Status message & saving state
   const [statusMessage, setStatusMessage] = useState<{
@@ -137,33 +130,7 @@ export default function CashTransactionView({
     }
   }, [getHeaders]);
 
-  // 3. Fetch real cash accounts from MongoDB
-  const fetchCashAccounts = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/admin/accounting/cash-accounts`, {
-        headers: getHeaders(),
-      });
-      if (!res.ok) return;
-      const json = await res.json();
-      const items = json.data?.cashAccounts || [];
-      if (Array.isArray(items)) {
-        const names = items
-          .map((a: any) => (a.accountName || "").trim())
-          .filter(Boolean);
-        const uniqueNames = Array.from(new Set(names));
-        if (uniqueNames.length > 0) {
-          setCashAccounts(uniqueNames);
-          if (!uniqueNames.includes(accountName)) {
-            setAccountName(uniqueNames[0]);
-          }
-        }
-      }
-    } catch {
-      // Graceful fallback
-    }
-  }, [getHeaders, accountName]);
-
-  // 4. Fetch real banks for deposit/withdrawal
+  // 3. Fetch real banks for deposit/withdrawal
   const fetchBanks = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/admin/accounting/banks`, {
@@ -186,23 +153,19 @@ export default function CashTransactionView({
   useEffect(() => {
     fetchReceiptSequence();
     fetchClients();
-    fetchCashAccounts();
     fetchBanks();
 
     const handleUpdate = () => {
       fetchReceiptSequence();
-      fetchCashAccounts();
       fetchBanks();
     };
     window.addEventListener("abc_cash_transactions_updated", handleUpdate);
-    window.addEventListener("abc_cash_accounts_updated", handleUpdate);
     window.addEventListener("abc_banks_updated", handleUpdate);
     return () => {
       window.removeEventListener("abc_cash_transactions_updated", handleUpdate);
-      window.removeEventListener("abc_cash_accounts_updated", handleUpdate);
       window.removeEventListener("abc_banks_updated", handleUpdate);
     };
-  }, [fetchReceiptSequence, fetchClients, fetchCashAccounts, fetchBanks]);
+  }, [fetchReceiptSequence, fetchClients, fetchBanks]);
 
   // Handle Quick Add Customer to MongoDB
   const handleSaveCustomer = async (e?: React.FormEvent) => {
@@ -246,43 +209,6 @@ export default function CashTransactionView({
     }
   };
 
-  const handleCreateAccount = async () => {
-    const val = newAccountName.trim();
-    if (!val) return;
-    setIsSavingAccount(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/admin/accounting/cash-accounts`, {
-        method: "POST",
-        headers: {
-          ...getHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          accountName: val,
-          description: "Created from Cash Transaction View",
-          currency: "AED",
-          openingBalance: 0,
-        }),
-      });
-
-      if (res.ok) {
-        if (!cashAccounts.includes(val)) {
-          setCashAccounts((prev) => [...prev, val]);
-        }
-        setAccountName(val);
-        setNewAccountName("");
-        setIsAddingAccount(false);
-        window.dispatchEvent(new Event("abc_cash_accounts_updated"));
-      } else {
-        const json = await res.json();
-        alert(json.message || "Failed to add cash drawer.");
-      }
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Error adding cash drawer.");
-    } finally {
-      setIsSavingAccount(false);
-    }
-  };
 
   const handleReset = () => {
     setTxType("Cash In");
@@ -508,103 +434,7 @@ export default function CashTransactionView({
             />
           </div>
 
-          {/* Cash Register / Drawer */}
-          <div className="erp-form-row">
-            <label className="erp-label required" style={{ minWidth: 130 }}>
-              Cash Register *
-            </label>
-            <div className="erp-input-with-tools" style={{ maxWidth: 360 }}>
-              <select
-                className="erp-select erp-flex-1"
-                value={accountName}
-                onChange={(e) => {
-                  if (e.target.value === "__add_new__") {
-                    setIsAddingAccount(true);
-                  } else {
-                    setAccountName(e.target.value);
-                  }
-                }}
-              >
-                {cashAccounts.length === 0 && <option value="Main Cash">Main Cash</option>}
-                {cashAccounts.map((acc) => (
-                  <option key={acc} value={acc}>
-                    {acc}
-                  </option>
-                ))}
-                <option value="__add_new__" style={{ fontWeight: 600, color: "#2563eb" }}>
-                  + Add New Cash Register...
-                </option>
-              </select>
-              <button
-                type="button"
-                className="erp-icon-btn erp-btn-orange"
-                title="Add Cash Register to Database"
-                onClick={() => setIsAddingAccount(true)}
-              >
-                +
-              </button>
-            </div>
-          </div>
 
-          {/* Inline Quick Add Cash Register */}
-          {isAddingAccount && (
-            <div
-              style={{
-                marginLeft: 130,
-                maxWidth: 360,
-                padding: "10px 12px",
-                background: "#f8fafc",
-                border: "1px solid #cbd5e1",
-                borderRadius: "6px",
-                display: "flex",
-                gap: 6,
-                alignItems: "center",
-              }}
-            >
-              <input
-                type="text"
-                placeholder="Register name (e.g. Counter Cash, Petty Cash)..."
-                className="erp-input"
-                style={{ flex: 1, fontSize: "0.82rem" }}
-                value={newAccountName}
-                onChange={(e) => setNewAccountName(e.target.value)}
-                autoFocus
-              />
-              <button
-                type="button"
-                style={{
-                  background: "#0f172a",
-                  color: "#ffffff",
-                  border: "none",
-                  borderRadius: 4,
-                  padding: "6px 10px",
-                  fontSize: "0.78rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-                disabled={isSavingAccount}
-                onClick={handleCreateAccount}
-              >
-                {isSavingAccount ? "Adding..." : "Add"}
-              </button>
-              <button
-                type="button"
-                style={{
-                  background: "transparent",
-                  color: "#64748b",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "4px 6px",
-                }}
-                onClick={() => {
-                  setIsAddingAccount(false);
-                  setNewAccountName("");
-                }}
-              >
-                ✕
-              </button>
-            </div>
-          )}
 
           {/* Customer / Party (Supports Walk-in, direct typing, DB lookup, & Quick Add) */}
           <div className="erp-form-row" style={{ alignItems: "flex-start" }}>

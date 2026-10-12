@@ -20,6 +20,7 @@ export type SidebarTab =
   | "accounting_invoices"
   | "accounting_banks"
   | "accounting_cash"
+  | "expense_reminders"
   | "cloud_usage"
   | "web_traffic";
 
@@ -62,12 +63,12 @@ export default function DashboardSidebar({
   const projectSelectorRef = useRef<HTMLDivElement>(null);
 
   const canAccessTab = (tab: string): boolean => {
-    if (tab === "notes") return true;
+    if (tab === "notes" || tab === "expense_reminders") return true;
     if (isMaster) return true;
     if (tab === "worker_admins" || tab === "activity_log") return false;
     const roles = user?.assignedRoles;
     if (!roles || roles.length === 0) {
-      return ["clients", "enquiries", "whatsapp_enquiries", "accounting", "overview", "notes"].includes(tab);
+      return ["clients", "enquiries", "whatsapp_enquiries", "accounting", "overview", "notes", "expense_reminders"].includes(tab);
     }
     if (tab === "accounting" || tab.startsWith("accounting_")) {
       return roles.includes("accounting");
@@ -658,6 +659,31 @@ export default function DashboardSidebar({
               </div>
             )}
           </div>
+        )}
+
+        {/* Expense Reminders (Top-Level Independent Section) */}
+        {canAccessTab("expense_reminders") && (
+          <button
+            type="button"
+            onClick={() => onSelectTab("expense_reminders")}
+            className={`sidebar-menu-btn ${activeTab === "expense_reminders" ? "active" : ""}`}
+            title="Expense Reminders"
+          >
+            <div className="sidebar-menu-left">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <span>Expense Reminders</span>
+            </div>
+          </button>
         )}
 
         {/* Cloud & Infrastructure Usage */}

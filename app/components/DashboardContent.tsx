@@ -19,6 +19,7 @@ import PersonnelManager from "./PersonnelManager";
 import ActivityLogManager from "./ActivityLogManager";
 import PrintableInvoiceModal, { PrintableInvoiceData } from "./PrintableInvoiceModal";
 import NotesManager from "./NotesManager";
+import ExpenseRemindersManager from "./ExpenseRemindersManager";
 import { API_BASE_URL } from "../config/api";
 
 export interface AdminModuleOption {
@@ -3734,6 +3735,13 @@ export default function DashboardContent({
         <CashManager
           getAuthHeaders={getAdminAuthHeaders}
           user={user}
+          onNavigateTab={onNavigateTab}
+        />
+      )}
+
+      {activeTab === "expense_reminders" && (
+        <ExpenseRemindersManager
+          getAuthHeaders={getAdminAuthHeaders}
           onNavigateTab={onNavigateTab}
         />
       )}

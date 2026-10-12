@@ -60,7 +60,6 @@ export default function CashManager({ getAuthHeaders, user, onNavigateTab }: Cas
   const [cashAccounts, setCashAccounts] = useState<CashAccountItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
 
   // Selected Cash Account & Transactions State
   const [selectedAccount, setSelectedAccount] = useState<CashAccountItem | null>(null);
@@ -218,26 +217,7 @@ export default function CashManager({ getAuthHeaders, user, onNavigateTab }: Cas
     }
   };
 
-  const [filterType, setFilterType] = useState<"all" | "in" | "out" | "transfer">("all");
 
-  const filteredTransactions = transactions.filter((tx) => {
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      const matches =
-        (tx.reference && tx.reference.toLowerCase().includes(q)) ||
-        (tx.description && tx.description.toLowerCase().includes(q)) ||
-        (tx.customerOrParty && tx.customerOrParty.toLowerCase().includes(q)) ||
-        (tx.type && tx.type.toLowerCase().includes(q)) ||
-        (tx.category && tx.category.toLowerCase().includes(q));
-      if (!matches) return false;
-    }
-
-    if (filterType === "in") return tx.credit > 0;
-    if (filterType === "out") return tx.debit > 0;
-    if (filterType === "transfer") return tx.category === "transfer" || tx.type.toLowerCase().includes("bank");
-
-    return true;
-  });
 
   return (
     <div className="bank-manager-container" style={{ width: "100%" }}>
@@ -245,9 +225,6 @@ export default function CashManager({ getAuthHeaders, user, onNavigateTab }: Cas
       <div className="content-header-row bank-header-row">
         <div>
           <h1 className="content-title">Cash Transactions</h1>
-          <p className="bank-header-subtitle">
-            Live Cash In-Hand, Walk-in Payments, Customer Receipts &amp; Disbursements
-          </p>
         </div>
 
         <button
@@ -288,7 +265,7 @@ export default function CashManager({ getAuthHeaders, user, onNavigateTab }: Cas
             {Number(accountSummary?.openingBalance ?? selectedAccount?.openingBalance ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </div>
           <span style={{ fontSize: "0.74rem", color: "#94a3b8" }}>
-            Drawer starting cash ({selectedAccount?.accountName || "Main Cash"})
+            Starting cash in hand
           </span>
         </div>
 
@@ -316,94 +293,12 @@ export default function CashManager({ getAuthHeaders, user, onNavigateTab }: Cas
             {selectedAccount?.currency || "AED"}{" "}
             {Number(accountSummary?.currentBalance ?? selectedAccount?.openingBalance ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </div>
-          <span style={{ fontSize: "0.74rem", color: "#16a34a", fontWeight: 600 }}>Active drawer cash</span>
-        </div>
-      </div>
-
-      {/* ITEMS ABOVE TABLE: Toolbar with Filter Pills + Register Switcher + Search */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, marginBottom: 14, flexWrap: "wrap" }}>
-        {/* Left: Filter Pills */}
-        <div className="clients-filter-pills">
-          <button
-            type="button"
-            className={`client-filter-pill ${filterType === "all" ? "active" : ""}`}
-            onClick={() => setFilterType("all")}
-          >
-            <span>All Cash ({transactions.length})</span>
-          </button>
-          <button
-            type="button"
-            className={`client-filter-pill ${filterType === "in" ? "active" : ""}`}
-            onClick={() => setFilterType("in")}
-          >
-            <span>⬇️ Cash In</span>
-          </button>
-          <button
-            type="button"
-            className={`client-filter-pill ${filterType === "out" ? "active" : ""}`}
-            onClick={() => setFilterType("out")}
-          >
-            <span>⬆️ Cash Out</span>
-          </button>
-          <button
-            type="button"
-            className={`client-filter-pill ${filterType === "transfer" ? "active" : ""}`}
-            onClick={() => setFilterType("transfer")}
-          >
-            <span>🏦 Bank Transfers</span>
-          </button>
-        </div>
-
-        {/* Right: Register Switcher & Search Box */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          {cashAccounts.length > 1 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#64748b" }}>Register:</span>
-              <select
-                className="admin-form-input"
-                style={{ padding: "5px 10px", fontSize: "0.8rem", width: "auto" }}
-                value={selectedAccount?.accountName || "Main Cash"}
-                onChange={(e) => {
-                  const acc = cashAccounts.find((a) => a.accountName === e.target.value);
-                  if (acc) setSelectedAccount(acc);
-                }}
-              >
-                {cashAccounts.map((a) => (
-                  <option key={a.id || a._id || a.accountName} value={a.accountName}>
-                    {a.accountName}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="bank-search-box" style={{ maxWidth: 320 }}>
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#64748b" strokeWidth="2.2">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search by ref #, customer, description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bank-search-input"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                className="bank-search-clear"
-                onClick={() => setSearchQuery("")}
-              >
-                ✕
-              </button>
-            )}
-          </div>
+          <span style={{ fontSize: "0.74rem", color: "#16a34a", fontWeight: 600 }}>Active cash balance</span>
         </div>
       </div>
 
       {/* FULL-WIDTH TRANSACTIONS TABLE (Normal Format) */}
-      <div className="admin-table-container" style={{ width: "100%", overflowX: "auto" }}>
+      <div className="admin-table-container" style={{ width: "100%", overflowX: "auto", marginTop: 16 }}>
         <table className="admin-table">
           <thead>
             <tr>
@@ -442,18 +337,18 @@ export default function CashManager({ getAuthHeaders, user, onNavigateTab }: Cas
                   </button>
                 </td>
               </tr>
-            ) : filteredTransactions.length === 0 ? (
+            ) : transactions.length === 0 ? (
               <tr>
                 <td colSpan={8} className="empty-admin-cell" style={{ padding: "44px 16px" }}>
                   <div style={{ fontSize: "2rem", marginBottom: "8px" }}>💵</div>
                   <strong>No cash transactions found.</strong>
                   <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#64748b" }}>
-                    Walk-in cash payments, cash invoices, cash incomes, cash expenses, and bank cash transfers will automatically show here.
+                    Click &ldquo;Record Cash Entry&rdquo; above to record customer payments or paper cash transactions.
                   </p>
                 </td>
               </tr>
             ) : (
-              filteredTransactions.map((tx) => (
+              transactions.map((tx) => (
                 <tr key={tx.id}>
                   <td>
                     <span style={{ fontSize: "0.8rem", color: "#475569", whiteSpace: "nowrap" }}>
