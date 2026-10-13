@@ -24,6 +24,16 @@ export interface ExpenseReminderItem {
   lastNotifiedAt?: string;
   daysRemaining: number;
   urgency: "critical" | "urgent" | "upcoming" | "normal";
+  plannedTestNextCycle?: boolean;
+  createdAt: string;
+}
+
+export interface ExpenseReminderRecipientItem {
+  _id: string;
+  email: string;
+  name?: string;
+  isActive: boolean;
+  createdBy?: string;
   createdAt: string;
 }
 
@@ -71,7 +81,7 @@ export default function ExpenseRemindersManager({
     user?.identifier === "masteradmin@abc.com";
   const canDeleteData = isMaster || user?.canDeleteData !== false;
 
-  const [activeViewTab, setActiveViewTab] = useState<"reminders" | "logs">("reminders");
+  const [activeViewTab, setActiveViewTab] = useState<"reminders" | "recipients" | "logs">("reminders");
 
   const [reminders, setReminders] = useState<ExpenseReminderItem[]>([]);
   const [stats, setStats] = useState<ReminderStats>({
@@ -84,6 +94,20 @@ export default function ExpenseRemindersManager({
 
   const [logs, setLogs] = useState<ExpenseReminderLogItem[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+
+  // Test recipients state
+  const [recipients, setRecipients] = useState<ExpenseReminderRecipientItem[]>([]);
+  const [recipientsLoading, setRecipientsLoading] = useState(false);
+  const [newRecipientEmail, setNewRecipientEmail] = useState("");
+  const [newRecipientName, setNewRecipientName] = useState("");
+  const [isAddingRecipient, setIsAddingRecipient] = useState(false);
+  const [recipientError, setRecipientError] = useState("");
+  const [planningTestId, setPlanningTestId] = useState<string | null>(null);
+  const [testingEmailId, setTestingEmailId] = useState<string | null>(null);
+  const [isGlobalPlanTestQueued, setIsGlobalPlanTestQueued] = useState(false);
+  const [isGlobalTestingNow, setIsGlobalTestingNow] = useState(false);
+  const [isGlobalPlanningTest, setIsGlobalPlanningTest] = useState(false);
+  const [showAddRecipientInput, setShowAddRecipientInput] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -180,10 +204,32 @@ export default function ExpenseRemindersManager({
     }
   }, [getHeaders]);
 
+  // Fetch test recipients
+  const fetchRecipients = useCallback(async () => {
+    setRecipientsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/expense-reminders/recipients`, {
+        headers: getHeaders(),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setRecipients(json.data?.recipients || []);
+        if (json.data?.isPlanTestQueued !== undefined) {
+          setIsGlobalPlanTestQueued(json.data.isPlanTestQueued);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load test recipients:", err);
+    } finally {
+      setRecipientsLoading(false);
+    }
+  }, [getHeaders]);
+
   useEffect(() => {
     fetchReminders();
+    fetchRecipients();
     fetchLogs();
-  }, [fetchReminders, fetchLogs]);
+  }, [fetchReminders, fetchRecipients, fetchLogs]);
 
   // Open modal for Create
   const handleOpenCreateModal = () => {
@@ -305,23 +351,161 @@ export default function ExpenseRemindersManager({
     }
   };
 
-  // Send Test Email
+  // Send Test Email Immediately (to target recipient + all active test recipients)
   const handleSendTestEmail = async (item: ExpenseReminderItem) => {
+    setTestingEmailId(item._id);
     try {
-      showToast(`Sending test email for "${item.title}" to ${item.targetEmail}...`);
+      showToast(`Sending test email for "${item.title}"...`);
       const res = await fetch(`${API_BASE_URL}/api/v1/admin/expense-reminders/${item._id}/test-email`, {
         method: "POST",
         headers: getHeaders(),
       });
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.message || "Failed to send test email");
+        throw new Error(json.message || "Failed to send test email");
       }
-      showToast(`✓ Test reminder email sent to ${item.targetEmail}! Check inbox.`);
+      const count = json.data?.recipientCount || 1;
+      showToast(`✓ Test reminder email sent to ${count} recipient(s)! Check inbox.`);
       fetchLogs();
     } catch (err: any) {
       alert(`Test Email Failed: ${err.message}`);
       fetchLogs();
+    } finally {
+      setTestingEmailId(null);
+    }
+  };
+
+  // Plan Test for Next Cycle (8:00 AM GST / 04:00 UTC)
+  const handleTogglePlanTest = async (item: ExpenseReminderItem) => {
+    setPlanningTestId(item._id);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/expense-reminders/${item._id}/plan-test`, {
+        method: "POST",
+        headers: getHeaders(),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json.message || "Failed to schedule test");
+      }
+      const planned = json.data?.plannedTestNextCycle;
+      showToast(
+        planned
+          ? `⏰ Queued for next 8:00 AM cycle! Test email for "${item.title}" will be sent.`
+          : `Cancelled 8:00 AM test run for "${item.title}".`
+      );
+      fetchReminders();
+    } catch (err: any) {
+      alert(`Plan Test Failed: ${err.message}`);
+    } finally {
+      setPlanningTestId(null);
+    }
+  };
+
+  // Add Test Recipient
+  const handleAddRecipient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRecipientEmail.trim()) {
+      setRecipientError("Please enter an email address.");
+      return;
+    }
+    setIsAddingRecipient(true);
+    setRecipientError("");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/expense-reminders/recipients`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({
+          email: newRecipientEmail.trim().toLowerCase(),
+          name: newRecipientName.trim(),
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json.message || "Failed to add recipient");
+      }
+      setNewRecipientEmail("");
+      setNewRecipientName("");
+      setShowAddRecipientInput(false);
+      showToast(`Recipient "${json.data?.recipient?.email || newRecipientEmail}" added`);
+      fetchRecipients();
+    } catch (err: any) {
+      setRecipientError(err.message || "Failed to add recipient");
+    } finally {
+      setIsAddingRecipient(false);
+    }
+  };
+
+  // Delete Test Recipient
+  const handleDeleteRecipient = async (id: string, email: string) => {
+    if (!confirm(`Remove "${email}" from test recipients?`)) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/expense-reminders/recipients/${id}`, {
+        method: "DELETE",
+        headers: getHeaders(),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.message || "Failed to remove recipient");
+      }
+      showToast(`Recipient "${email}" removed`);
+      fetchRecipients();
+    } catch (err: any) {
+      alert(err.message || "Failed to delete recipient");
+    }
+  };
+
+  // Real-Time Test Dispatch to all active test recipients
+  const handleGlobalTestNow = async () => {
+    if (recipients.length === 0) {
+      alert("Please add at least one test recipient email first.");
+      return;
+    }
+    setIsGlobalTestingNow(true);
+    try {
+      showToast("Sending real-time test email to all test recipients...");
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/expense-reminders/recipients/test-now`, {
+        method: "POST",
+        headers: getHeaders(),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json.message || "Failed to send real-time test email");
+      }
+      const count = json.data?.totalSent || recipients.length;
+      showToast(`✓ Real-time test email delivered to ${count} recipient(s)! Check inbox.`);
+      fetchLogs();
+    } catch (err: any) {
+      alert(`Real-Time Test Failed: ${err.message}`);
+      fetchLogs();
+    } finally {
+      setIsGlobalTestingNow(false);
+    }
+  };
+
+  // Plan Test for Next Cycle (8:00 AM GST / 04:00 UTC) across test recipients
+  const handleGlobalPlanTest = async () => {
+    setIsGlobalPlanningTest(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/expense-reminders/recipients/plan-test`, {
+        method: "POST",
+        headers: getHeaders(),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json.message || "Failed to schedule 8 AM test cycle");
+      }
+      const isQueued = json.data?.isQueued ?? !isGlobalPlanTestQueued;
+      setIsGlobalPlanTestQueued(isQueued);
+      showToast(
+        isQueued
+          ? "⏰ 8:00 AM cycle test planned! Test email will be sent to all test recipients."
+          : "Cancelled 8:00 AM test cycle."
+      );
+      fetchReminders();
+    } catch (err: any) {
+      alert(`Plan Test Failed: ${err.message}`);
+    } finally {
+      setIsGlobalPlanningTest(false);
     }
   };
 
@@ -363,6 +547,8 @@ export default function ExpenseRemindersManager({
         return "Expiry Day (0d)";
       case "test_email":
         return "Direct Test Email";
+      case "planned_test":
+        return "⏰ Planned 8 AM Test";
       default:
         return stage.replace("_", " ");
     }
@@ -406,8 +592,8 @@ export default function ExpenseRemindersManager({
         </div>
       )}
 
-      {/* Sub-tab navigation: Matches Worker Admins & Website Edit */}
-      <div className="worker-admin-subtabs">
+      {/* Sub-tab navigation: Matches Worker Admins & Website Edit (Hidden on mobile) */}
+      <div className="worker-admin-subtabs expense-reminders-subtabs-desktop">
         <button
           type="button"
           className={`worker-admin-subtab-btn ${activeViewTab === "reminders" ? "active" : ""}`}
@@ -420,6 +606,23 @@ export default function ExpenseRemindersManager({
             <line x1="3" y1="10" x2="21" y2="10" />
           </svg>
           <span>Reminders</span>
+        </button>
+
+        <button
+          type="button"
+          className={`worker-admin-subtab-btn ${activeViewTab === "recipients" ? "active" : ""}`}
+          onClick={() => {
+            setActiveViewTab("recipients");
+            fetchRecipients();
+          }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span>Test Recipients {recipients.length > 0 ? `(${recipients.length})` : ""}</span>
         </button>
 
         <button
@@ -444,20 +647,24 @@ export default function ExpenseRemindersManager({
       <div className="content-header-row" style={{ marginBottom: "20px" }}>
         <div>
           <h1 className="content-title">
-            {activeViewTab === "reminders" ? "Expense Reminders" : "Email Delivery Logs"}
+            {activeViewTab === "reminders"
+              ? "Expense Reminders"
+              : activeViewTab === "recipients"
+              ? "Test Recipients"
+              : "Email Delivery Logs"}
           </h1>
         </div>
 
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          {activeViewTab === "reminders" ? (
+          {activeViewTab === "reminders" && (
             <>
-              {/* Scan & Trigger Button */}
+              {/* Scan & Trigger Button (Hidden on mobile) */}
               <button
                 type="button"
                 onClick={handleTriggerCronNow}
                 disabled={isTriggeringCron}
-                className="flat-secondary-btn"
-                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: "38px" }}
+                className="flat-secondary-btn expense-reminders-scan-btn-desktop"
+                style={{ alignItems: "center", gap: "6px", height: "38px" }}
                 title="Scan approaching expiries and send reminder emails now"
               >
                 <span>{isTriggeringCron ? "⏳" : "⚡"}</span>
@@ -478,7 +685,129 @@ export default function ExpenseRemindersManager({
                 <span>Add Reminder</span>
               </button>
             </>
-          ) : (
+          )}
+
+          {activeViewTab === "recipients" && (
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+              {!showAddRecipientInput ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddRecipientInput(true);
+                    setRecipientError("");
+                  }}
+                  className="capsule-btn-black"
+                  style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: "38px" }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <span>Add Recipient</span>
+                </button>
+              ) : (
+                <form
+                  onSubmit={handleAddRecipient}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}
+                >
+                  <input
+                    type="email"
+                    required
+                    autoFocus
+                    placeholder="Enter email address *"
+                    value={newRecipientEmail}
+                    onChange={(e) => setNewRecipientEmail(e.target.value)}
+                    className="admin-form-input"
+                    style={{ width: "230px", height: "38px" }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Name (Optional)"
+                    value={newRecipientName}
+                    onChange={(e) => setNewRecipientName(e.target.value)}
+                    className="admin-form-input"
+                    style={{ width: "150px", height: "38px" }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={isAddingRecipient}
+                    className="capsule-btn-black"
+                    style={{ height: "38px", padding: "0 16px" }}
+                  >
+                    {isAddingRecipient ? "Adding..." : "+ Add"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddRecipientInput(false);
+                      setRecipientError("");
+                    }}
+                    style={{
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "50%",
+                      border: "1px solid #cbd5e1",
+                      backgroundColor: "#ffffff",
+                      color: "#64748b",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      lineHeight: 1,
+                      flexShrink: 0,
+                      transition: "all 0.15s ease",
+                    }}
+                    title="Close"
+                    aria-label="Close"
+                  >
+                    ✕
+                  </button>
+                </form>
+              )}
+
+              {/* Main Button 2: Real-Time Test */}
+              <button
+                type="button"
+                onClick={handleGlobalTestNow}
+                disabled={isGlobalTestingNow || recipients.length === 0}
+                className="flat-secondary-btn"
+                style={{ display: "inline-flex", alignItems: "center", height: "38px" }}
+                title="Send real-time test notification to all active recipients now"
+              >
+                <span>{isGlobalTestingNow ? "Sending..." : "Real-Time Test"}</span>
+              </button>
+
+              {/* Main Button 3: Plan Next Cycle Test (8 AM) */}
+              <button
+                type="button"
+                onClick={handleGlobalPlanTest}
+                disabled={isGlobalPlanningTest || recipients.length === 0}
+                className="flat-secondary-btn"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  height: "38px",
+                  backgroundColor: isGlobalPlanTestQueued ? "#ecfdf5" : "inherit",
+                  color: isGlobalPlanTestQueued ? "#047857" : "#0f172a",
+                  borderColor: isGlobalPlanTestQueued ? "#10b981" : "#cbd5e1",
+                  fontWeight: isGlobalPlanTestQueued ? 700 : 500,
+                }}
+                title="Queue test email to send automatically at next 8:00 AM cycle (04:00 UTC)"
+              >
+                <span>
+                  {isGlobalPlanningTest
+                    ? "Updating..."
+                    : isGlobalPlanTestQueued
+                    ? "8 AM Queued"
+                    : "Plan 8 AM Test"}
+                </span>
+              </button>
+            </div>
+          )}
+
+          {activeViewTab === "logs" && (
             <button
               type="button"
               onClick={fetchLogs}
@@ -520,9 +849,9 @@ export default function ExpenseRemindersManager({
         </div>
       )}
 
-      {/* Search Bar matching other admin sections */}
+      {/* Search Bar matching other admin sections (Hidden on mobile) */}
       {activeViewTab === "reminders" && (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
+        <div className="expense-reminders-search-desktop" style={{ justifyContent: "flex-end", marginBottom: "16px" }}>
           <div className="clients-search-box" style={{ maxWidth: "320px", width: "100%", margin: 0 }}>
             <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8" />
@@ -550,7 +879,7 @@ export default function ExpenseRemindersManager({
 
       {/* VIEW 1: ACTIVE REMINDERS TABLE */}
       {activeViewTab === "reminders" && (
-        <div className="admin-table-container worker-admins-table-container">
+        <div className="admin-table-container expense-reminders-table-container">
           <table className="admin-table">
             <thead>
               <tr>
@@ -575,7 +904,7 @@ export default function ExpenseRemindersManager({
                 <th>
                   <span className="th-inner">Stages (7d • 3d • 2d • 0d)</span>
                 </th>
-                <th style={{ textAlign: "right", width: "180px" }}>
+                <th style={{ textAlign: "right", minWidth: "260px" }}>
                   <span className="th-inner">Actions</span>
                 </th>
               </tr>
@@ -756,15 +1085,45 @@ export default function ExpenseRemindersManager({
                             ↻ Renew
                           </button>
 
-                          {/* Test Email Button */}
+                          {/* Immediate Test Button */}
                           <button
                             type="button"
                             onClick={() => handleSendTestEmail(item)}
-                            title="Send immediate test email to recipient"
+                            disabled={testingEmailId === item._id}
+                            title="Send immediate test email to recipient and all active test recipients"
                             className="flat-secondary-btn"
-                            style={{ padding: "4px 8px", fontSize: "0.75rem", height: "28px" }}
+                            style={{ padding: "4px 8px", fontSize: "0.75rem", height: "28px", whiteSpace: "nowrap" }}
                           >
-                            ✉️ Test
+                            {testingEmailId === item._id ? "Sending..." : "Test Now"}
+                          </button>
+
+                          {/* Plan Test Next Cycle Button (8:00 AM UAE / 04:00 UTC) */}
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePlanTest(item)}
+                            disabled={planningTestId === item._id}
+                            title={
+                              item.plannedTestNextCycle
+                                ? "Queued for next 8:00 AM cycle. Click to cancel."
+                                : "Plan test: automatically send email in next cycle at 8:00 AM GST (04:00 UTC)"
+                            }
+                            className="flat-secondary-btn"
+                            style={{
+                              padding: "4px 8px",
+                              fontSize: "0.75rem",
+                              height: "28px",
+                              whiteSpace: "nowrap",
+                              backgroundColor: item.plannedTestNextCycle ? "#ecfdf5" : "inherit",
+                              color: item.plannedTestNextCycle ? "#047857" : "#475569",
+                              borderColor: item.plannedTestNextCycle ? "#10b981" : "#cbd5e1",
+                              fontWeight: item.plannedTestNextCycle ? 700 : 500,
+                            }}
+                          >
+                            {planningTestId === item._id
+                              ? "..."
+                              : item.plannedTestNextCycle
+                              ? "8 AM Queued"
+                              : "Plan 8 AM"}
                           </button>
 
                           {/* Edit Button */}
@@ -806,7 +1165,7 @@ export default function ExpenseRemindersManager({
 
       {/* VIEW 2: DELIVERY LOGS TABLE */}
       {activeViewTab === "logs" && (
-        <div className="admin-table-container worker-admins-table-container">
+        <div className="admin-table-container expense-reminders-table-container">
           <table className="admin-table">
             <thead>
               <tr>
@@ -890,6 +1249,134 @@ export default function ExpenseRemindersManager({
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* VIEW 3: TEST RECIPIENTS SECTION */}
+      {activeViewTab === "recipients" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {/* Inline Error if any */}
+          {recipientError && (
+            <div
+              style={{
+                background: "#fee2e2",
+                color: "#b91c1c",
+                padding: "8px 14px",
+                borderRadius: 8,
+                fontSize: "0.84rem",
+                width: "fit-content",
+              }}
+            >
+              {recipientError}
+            </div>
+          )}
+
+          {/* Test Recipients Table */}
+          <div className="admin-table-container expense-reminders-table-container">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>
+                    <span className="th-inner">Recipient Name / Label</span>
+                  </th>
+                  <th>
+                    <span className="th-inner">Email Address</span>
+                  </th>
+                  <th>
+                    <span className="th-inner">Delivery Status</span>
+                  </th>
+                  <th>
+                    <span className="th-inner">Date Added</span>
+                  </th>
+                  <th style={{ textAlign: "right", width: "100px" }}>
+                    <span className="th-inner">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {recipientsLoading ? (
+                  <tr>
+                    <td colSpan={5} className="empty-admin-cell">
+                      Loading test recipients from MongoDB database...
+                    </td>
+                  </tr>
+                ) : recipients.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="empty-admin-cell">
+                      No test recipients added yet. Use the form above to add emails that should receive test notifications.
+                    </td>
+                  </tr>
+                ) : (
+                  recipients.map((rec) => {
+                    const addedDate = new Date(rec.createdAt).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    });
+
+                    return (
+                      <tr key={rec._id} className="worker-admin-clickable-row">
+                        <td>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <div
+                              className="admin-avatar-photo"
+                              style={{
+                                background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+                                color: "#ffffff",
+                                fontWeight: 700,
+                                fontSize: "0.78rem",
+                              }}
+                            >
+                              {rec.name ? rec.name.slice(0, 2).toUpperCase() : rec.email.slice(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <strong style={{ color: "#0f172a", fontSize: "0.88rem" }}>
+                                {rec.name || "Default Test Recipient"}
+                              </strong>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td>
+                          <span style={{ color: "#0284c7", fontWeight: 500, fontSize: "0.85rem" }}>
+                            {rec.email}
+                          </span>
+                        </td>
+
+                        <td>
+                          <span className="setup-pill completed" style={{ background: "#ecfdf5", color: "#047857" }}>
+                            ● Active Recipient
+                          </span>
+                        </td>
+
+                        <td>
+                          <span style={{ fontSize: "0.84rem", color: "#64748b" }}>
+                            {addedDate}
+                          </span>
+                        </td>
+
+                        <td style={{ textAlign: "right" }}>
+                          {canDeleteData && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRecipient(rec._id, rec.email)}
+                              className="table-action-btn delete"
+                              title="Delete recipient"
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              </svg>
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

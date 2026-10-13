@@ -12457,4 +12457,39 @@
   cursor: pointer;
 }
 
+/* ==========================================================================
+   Expense Reminders - Mobile Responsiveness (<= 900px)
+   ========================================================================== */
+.expense-reminders-table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+}
+
+.expense-reminders-scan-btn-desktop {
+  display: inline-flex;
+}
+
+.expense-reminders-search-desktop {
+  display: flex;
+}
+
+@media (max-width: 900px) {
+  /* For mobile view only: hide top subtabs (Reminders / Delivery Logs) */
+  .expense-reminders-subtabs-desktop {
+    display: none !important;
+  }
+
+  /* For mobile view only: hide Scan & Trigger button */
+  .expense-reminders-scan-btn-desktop {
+    display: none !important;
+  }
+
+  /* For mobile view only: hide search box */
+  .expense-reminders-search-desktop {
+    display: none !important;
+  }
+}
+
+
 
