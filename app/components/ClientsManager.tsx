@@ -20,6 +20,17 @@ export interface ClientPhoto {
   url: string;
 }
 
+export interface ClientServiceItem {
+  _id?: string;
+  id?: string;
+  name: string;
+  status: "in_progress" | "completed";
+  targetDate?: string | null;
+  files: ClientFile[];
+  notes?: string;
+  createdAt?: string;
+}
+
 export interface ClientItem {
   id: string;
   identifier: string;
@@ -33,6 +44,7 @@ export interface ClientItem {
   photo?: ClientPhoto | null;
   files: ClientFile[];
   fileCount: number;
+  services?: ClientServiceItem[];
   source: "website" | "manual";
   createdBy?: {
     _id?: string;
@@ -261,6 +273,10 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
     return false;
   };
 
+  const generateRandom6DigitPin = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
   // Add Client Form State (Inline in content section)
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -271,9 +287,18 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
     phone: "",
     address: "",
     pin: "",
+    password: "",
     completed: false,
     expirationTimer: "",
   });
+
+  // Recently created credentials alert
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    name: string;
+    phone: string;
+    pin: string;
+  } | null>(null);
+  const [copiedCredentials, setCopiedCredentials] = useState(false);
 
   // Selected Client (Drawer / Details Modal)
   const [selectedClient, setSelectedClient] = useState<ClientItem | null>(null);
@@ -300,6 +325,7 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
     phone: "",
     address: "",
     pin: "",
+    password: "",
     completed: false,
     expirationTimer: "",
   });
@@ -321,6 +347,22 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
   const [clientInvoices, setClientInvoices] = useState<any[]>([]);
   const [isLoadingClientInvoices, setIsLoadingClientInvoices] = useState(false);
   const [activePrintInvoice, setActivePrintInvoice] = useState<PrintableInvoiceData | null>(null);
+
+  // Client Services & Tracking State
+  const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
+  const [newServiceName, setNewServiceName] = useState("");
+  const [newServiceStatus, setNewServiceStatus] = useState<"in_progress" | "completed">("in_progress");
+  const [newServiceTargetDate, setNewServiceTargetDate] = useState("");
+  const [newServiceNotes, setNewServiceNotes] = useState("");
+  const [isAddingService, setIsAddingService] = useState(false);
+  const [serviceError, setServiceError] = useState("");
+  const [uploadingServiceId, setUploadingServiceId] = useState<string | null>(null);
+  const [togglingServiceId, setTogglingServiceId] = useState<string | null>(null);
+  const [deletingServiceId, setDeletingServiceId] = useState<string | null>(null);
+
+  // File input ref for service attachments
+  const serviceFileInputRef = useRef<HTMLInputElement>(null);
+  const activeServiceUploadRef = useRef<string | null>(null);
 
   // Helper to build auth headers
   const getAuthHeaders = useCallback((): Record<string, string> => {
@@ -502,6 +544,15 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
       if (json.data?.client) {
         setClients((prev) => [json.data.client, ...prev]);
         window.dispatchEvent(new Event("abc_client_updated"));
+
+        const assignedPin = json.data?.temporaryPin || newClient.password;
+        if (assignedPin) {
+          setCreatedCredentials({
+            name: json.data.client.name || "Client",
+            phone: json.data.client.phone || json.data.client.identifier,
+            pin: assignedPin,
+          });
+        }
       }
       setIsAddFormOpen(false);
       setNewClient({
@@ -510,6 +561,7 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
         phone: "",
         address: "",
         pin: "",
+        password: "",
         completed: false,
         expirationTimer: "",
       });
@@ -529,6 +581,7 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
       phone: client.phone || "",
       address: client.address || "",
       pin: client.pin || "",
+      password: "",
       completed: client.completed,
       expirationTimer: toDateTimeLocal(client.expirationTimer),
     });
@@ -550,6 +603,7 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
             phone: json.data.client.phone || "",
             address: json.data.client.address || "",
             pin: json.data.client.pin || "",
+            password: "",
             completed: json.data.client.completed,
             expirationTimer: toDateTimeLocal(json.data.client.expirationTimer),
           });
@@ -584,9 +638,17 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
         setClients((prev) =>
           prev.map((c) => (c.id === selectedClient.id ? { ...c, ...updated } : c))
         );
+        window.dispatchEvent(new Event("abc_client_updated"));
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3500);
-        window.dispatchEvent(new Event("abc_client_updated"));
+        if (json.data?.temporaryPin) {
+          setCreatedCredentials({
+            name: selectedClient.name || "Client",
+            phone: selectedClient.phone || selectedClient.identifier,
+            pin: json.data.temporaryPin,
+          });
+        }
+        setEditFormData((prev) => ({ ...prev, password: "" }));
       }
     } catch (err) {
       console.error("Failed to update client:", err);
@@ -788,6 +850,223 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
       alert("Network error: Could not reach the server to delete client.");
     } finally {
       setDeletingClientId(null);
+    }
+  };
+
+  // Add new service to client
+  const handleAddService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedClient) return;
+    if (!newServiceName.trim()) {
+      setServiceError("Please enter a service name.");
+      return;
+    }
+
+    setServiceError("");
+    setIsAddingService(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/clients/${selectedClient.id}/services`, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: newServiceName.trim(),
+          status: newServiceStatus,
+          targetDate: newServiceTargetDate || null,
+          notes: newServiceNotes.trim() || undefined,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        setServiceError(json.message || "Failed to add service.");
+        return;
+      }
+
+      if (json.data?.services) {
+        const updatedServices = json.data.services;
+        setSelectedClient((prev) => (prev ? { ...prev, services: updatedServices } : null));
+        setClients((prev) =>
+          prev.map((c) => (c.id === selectedClient.id ? { ...c, services: updatedServices } : c))
+        );
+        window.dispatchEvent(new Event("abc_client_updated"));
+      }
+
+      setNewServiceName("");
+      setNewServiceStatus("in_progress");
+      setNewServiceTargetDate("");
+      setNewServiceNotes("");
+      setIsAddServiceOpen(false);
+    } catch (err: unknown) {
+      setServiceError(err instanceof Error ? err.message : "Failed to add service.");
+    } finally {
+      setIsAddingService(false);
+    }
+  };
+
+  // Set or toggle service status (in_progress <-> completed)
+  const handleToggleServiceStatus = async (
+    serviceId: string,
+    currentOrTargetStatus: "in_progress" | "completed",
+    isExplicitTarget = false
+  ) => {
+    if (!selectedClient) return;
+    const nextStatus = isExplicitTarget
+      ? currentOrTargetStatus
+      : currentOrTargetStatus === "in_progress"
+      ? "completed"
+      : "in_progress";
+
+    setTogglingServiceId(serviceId);
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/admin/clients/${selectedClient.id}/services/${serviceId}`,
+        {
+          method: "PATCH",
+          headers: {
+            ...getAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: nextStatus }),
+        }
+      );
+
+      const json = await res.json();
+      if (res.ok && json.data?.services) {
+        const updatedServices = json.data.services;
+        setSelectedClient((prev) => (prev ? { ...prev, services: updatedServices } : null));
+        setClients((prev) =>
+          prev.map((c) => (c.id === selectedClient.id ? { ...c, services: updatedServices } : c))
+        );
+        window.dispatchEvent(new Event("abc_client_updated"));
+      }
+    } catch (err) {
+      console.error("Failed to update service status:", err);
+    } finally {
+      setTogglingServiceId(null);
+    }
+  };
+
+  // Delete service
+  const handleDeleteService = async (serviceId: string) => {
+    if (!selectedClient) return;
+    if (!isMaster && user?.canDeleteData === false) {
+      alert("Permission denied: Your worker admin account does not have permission to delete data.");
+      return;
+    }
+    if (!window.confirm("Are you sure you want to delete this service and any attached files?")) {
+      return;
+    }
+
+    setDeletingServiceId(serviceId);
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/admin/clients/${selectedClient.id}/services/${serviceId}`,
+        {
+          method: "DELETE",
+          headers: getAuthHeaders(),
+        }
+      );
+
+      const json = await res.json();
+      if (res.ok && json.data?.services) {
+        const updatedServices = json.data.services;
+        setSelectedClient((prev) => (prev ? { ...prev, services: updatedServices } : null));
+        setClients((prev) =>
+          prev.map((c) => (c.id === selectedClient.id ? { ...c, services: updatedServices } : c))
+        );
+        window.dispatchEvent(new Event("abc_client_updated"));
+      }
+    } catch (err) {
+      console.error("Failed to delete service:", err);
+    } finally {
+      setDeletingServiceId(null);
+    }
+  };
+
+  // Trigger file upload for a specific service
+  const handleTriggerServiceFileUpload = (serviceId: string) => {
+    activeServiceUploadRef.current = serviceId;
+    if (serviceFileInputRef.current) {
+      serviceFileInputRef.current.value = "";
+      serviceFileInputRef.current.click();
+    }
+  };
+
+  // Upload file for a specific service
+  const handleServiceFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const serviceId = activeServiceUploadRef.current;
+    if (!selectedClient || !serviceId || !e.target.files || e.target.files.length === 0) return;
+
+    const files = e.target.files;
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+      formData.append("files", files[i]);
+    }
+
+    setUploadingServiceId(serviceId);
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/admin/clients/${selectedClient.id}/services/${serviceId}/files`,
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: formData,
+        }
+      );
+
+      const json = await res.json();
+      if (res.ok && json.data?.services) {
+        const updatedServices = json.data.services;
+        setSelectedClient((prev) => (prev ? { ...prev, services: updatedServices } : null));
+        setClients((prev) =>
+          prev.map((c) => (c.id === selectedClient.id ? { ...c, services: updatedServices } : c))
+        );
+        window.dispatchEvent(new Event("abc_client_updated"));
+      } else {
+        alert(json.message || "Failed to upload service file.");
+      }
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to upload service file.");
+    } finally {
+      setUploadingServiceId(null);
+      if (serviceFileInputRef.current) serviceFileInputRef.current.value = "";
+    }
+  };
+
+  // Delete file from service
+  const handleDeleteServiceFile = async (serviceId: string, fileId: string) => {
+    if (!selectedClient) return;
+    if (!isMaster && user?.canDeleteData === false) {
+      alert("Permission denied: Your worker admin account does not have permission to delete data.");
+      return;
+    }
+    if (!window.confirm("Are you sure you want to delete this file from the service?")) {
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/admin/clients/${selectedClient.id}/services/${serviceId}/files/${fileId}`,
+        {
+          method: "DELETE",
+          headers: getAuthHeaders(),
+        }
+      );
+
+      const json = await res.json();
+      if (res.ok && json.data?.services) {
+        const updatedServices = json.data.services;
+        setSelectedClient((prev) => (prev ? { ...prev, services: updatedServices } : null));
+        setClients((prev) =>
+          prev.map((c) => (c.id === selectedClient.id ? { ...c, services: updatedServices } : c))
+        );
+        window.dispatchEvent(new Event("abc_client_updated"));
+      }
+    } catch (err) {
+      console.error("Failed to delete service file:", err);
     }
   };
 
@@ -1111,6 +1390,33 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
                   </span>
                 </div>
 
+                <div className="admin-form-field" style={{ marginTop: "14px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <label className="admin-form-label" style={{ marginBottom: 0 }}>Reset Login PIN (6-digit)</label>
+                    <button
+                      type="button"
+                      onClick={() => setEditFormData({ ...editFormData, password: generateRandom6DigitPin() })}
+                      className="preset-pill-btn"
+                      title="Generate new 6-digit PIN"
+                      style={{ padding: "4px 8px", fontSize: "0.75rem" }}
+                    >
+                      ⚡ Auto-Generate
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={8}
+                    value={editFormData.password || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                    placeholder="Leave blank to keep existing PIN"
+                    className="admin-form-input"
+                    style={{ letterSpacing: "2px", fontWeight: "600", maxWidth: "240px" }}
+                  />
+                  <span className="admin-form-helper-text">
+                    Enter or generate a new 6-digit PIN if the client needs their PIN reset.
+                  </span>
+                </div>
+
                 <div style={{ marginTop: "20px" }}>
                   <button
                     type="submit"
@@ -1286,6 +1592,313 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
                 )}
               </div>
             </div>
+          </div>
+
+          {/* =========================================================
+              CLIENT SERVICES & PROGRESS TRACKING (PERSISTED IN MONGODB)
+              ========================================================= */}
+          <div className="client-card-section" style={{ marginTop: "24px", marginBottom: "24px" }}>
+            <div className="client-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", margin: 0, paddingBottom: isAddServiceOpen ? "14px" : "0", borderBottom: isAddServiceOpen ? "1px solid #f1f5f9" : "none" }}>
+              <h2 className="client-card-title" style={{ margin: 0 }}>Services &amp; Progress</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setServiceError("");
+                  setIsAddServiceOpen((prev) => !prev);
+                }}
+                className={isAddServiceOpen ? "capsule-btn-outline" : "capsule-btn-black"}
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.82rem", padding: "6px 14px" }}
+              >
+                {isAddServiceOpen ? (
+                  <>
+                    <span>✕</span>
+                    <span>Cancel</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    <span>Add Service</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Hidden file input for service attachments */}
+            <input
+              ref={serviceFileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.png,.jpg,.jpeg,.webp"
+              onChange={handleServiceFileInputChange}
+              style={{ display: "none" }}
+            />
+
+            {/* Inline Add Service Form */}
+            {isAddServiceOpen && (
+              <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "18px", marginTop: "16px", marginBottom: "20px" }}>
+                <h3 style={{ fontSize: "0.95rem", fontWeight: 600, color: "#0f172a", marginBottom: "12px" }}>
+                  New Service for {selectedClient.name || "Client"}
+                </h3>
+                {serviceError && (
+                  <div className="admin-modal-error" style={{ marginBottom: "12px" }}>
+                    {serviceError}
+                  </div>
+                )}
+                <form onSubmit={handleAddService}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px", marginBottom: "12px" }}>
+                    <div>
+                      <label className="admin-form-label" style={{ fontSize: "0.8rem" }}>Service Name *</label>
+                      <input
+                        type="text"
+                        value={newServiceName}
+                        onChange={(e) => setNewServiceName(e.target.value)}
+                        placeholder="e.g. Family Visa Typing, Trade License..."
+                        className="admin-form-input"
+                        autoFocus
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="admin-form-label" style={{ fontSize: "0.8rem" }}>Status</label>
+                      <select
+                        value={newServiceStatus}
+                        onChange={(e) => setNewServiceStatus(e.target.value as "in_progress" | "completed")}
+                        className="admin-form-input"
+                        style={{ height: "42px" }}
+                      >
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="admin-form-label" style={{ fontSize: "0.8rem" }}>Target Date (Optional)</label>
+                      <input
+                        type="datetime-local"
+                        value={newServiceTargetDate}
+                        onChange={(e) => setNewServiceTargetDate(e.target.value)}
+                        className="admin-form-input"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="admin-form-label" style={{ fontSize: "0.8rem" }}>Notes (Optional)</label>
+                    <input
+                      type="text"
+                      value={newServiceNotes}
+                      onChange={(e) => setNewServiceNotes(e.target.value)}
+                      placeholder="Optional notes or instructions for this service..."
+                      className="admin-form-input"
+                    />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "14px" }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddServiceOpen(false)}
+                      className="capsule-btn-outline"
+                      style={{ fontSize: "0.84rem", padding: "6px 14px" }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isAddingService}
+                      className="capsule-btn-black"
+                      style={{ fontSize: "0.84rem", padding: "6px 16px" }}
+                    >
+                      {isAddingService ? "Adding..." : "Save Service"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* List of Services */}
+            {selectedClient.services && selectedClient.services.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: isAddServiceOpen ? "0" : "14px" }}>
+                {selectedClient.services.map((svc) => {
+                  const sId = (svc.id || svc._id || "") as string;
+                  const isSvcCompleted = svc.status === "completed";
+                  const isUploading = uploadingServiceId === sId;
+                  const isToggling = togglingServiceId === sId;
+                  const isDeleting = deletingServiceId === sId;
+
+                  return (
+                    <div
+                      key={sId}
+                      style={{
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "10px",
+                        padding: "16px 18px",
+                        background: isSvcCompleted ? "#fcfdfd" : "#ffffff",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                            <h3 style={{ fontSize: "0.98rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
+                              {svc.name}
+                            </h3>
+
+                            {/* Flexible Status Selector - Switch between In Progress & Completed anytime */}
+                            <select
+                              value={svc.status}
+                              onChange={(e) => handleToggleServiceStatus(sId, e.target.value as "in_progress" | "completed", true)}
+                              disabled={isToggling}
+                              title="Set status (can be completed with or without attaching files)"
+                              style={{
+                                appearance: "none",
+                                WebkitAppearance: "none",
+                                padding: "4px 26px 4px 10px",
+                                borderRadius: "20px",
+                                fontSize: "0.76rem",
+                                fontWeight: 600,
+                                cursor: isToggling ? "wait" : "pointer",
+                                border: isSvcCompleted ? "1px solid #86efac" : "1px solid #fde047",
+                                backgroundColor: isSvcCompleted ? "#dcfce7" : "#fef9c3",
+                                color: isSvcCompleted ? "#15803d" : "#a16207",
+                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                                backgroundRepeat: "no-repeat",
+                                backgroundPosition: "right 8px center",
+                                outline: "none",
+                              }}
+                            >
+                              <option value="in_progress">● In Progress</option>
+                              <option value="completed">✓ Completed</option>
+                            </select>
+                          </div>
+                          {svc.notes && (
+                            <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+                              {svc.notes}
+                            </p>
+                          )}
+                          {svc.targetDate && (
+                            <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "4px" }}>
+                              Target: {new Date(svc.targetDate).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })}
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <button
+                            type="button"
+                            onClick={() => handleTriggerServiceFileUpload(sId)}
+                            disabled={isUploading}
+                            className="capsule-btn-outline"
+                            style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", padding: "5px 10px" }}
+                            title="Attach completed file or document for this service (optional)"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="17 8 12 3 7 8" />
+                              <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            <span>{isUploading ? "Uploading..." : "Attach File"}</span>
+                          </button>
+
+                          {(isMaster || user?.canDeleteData !== false) && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteService(sId)}
+                              disabled={isDeleting}
+                              className="file-delete-btn"
+                              title="Delete this service"
+                              style={{ padding: "6px" }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Service Attached Files (Only shown if files exist) */}
+                      {svc.files && svc.files.length > 0 && (
+                        <div style={{ marginTop: "12px", paddingTop: "10px", borderTop: "1px dashed #e2e8f0" }}>
+                          <div style={{ fontSize: "0.76rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "8px" }}>
+                            Attached Files ({svc.files.length})
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "8px" }}>
+                            {svc.files.map((file, fIdx) => (
+                              <div
+                                key={file.public_id || file._id || fIdx}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  padding: "8px 10px",
+                                  background: "#f8fafc",
+                                  border: "1px solid #e2e8f0",
+                                  borderRadius: "6px",
+                                  gap: "8px",
+                                }}
+                              >
+                                <div style={{ overflow: "hidden", minWidth: 0 }}>
+                                  <a
+                                    href={file.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ fontSize: "0.82rem", fontWeight: 600, color: "#0f172a", textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                                    title={file.fileName}
+                                  >
+                                    {file.fileName}
+                                  </a>
+                                  <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
+                                    {formatFileSize(file.fileSize)}
+                                  </span>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+                                  <a
+                                    href={file.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="file-action-view-btn"
+                                    style={{ padding: "3px 8px", fontSize: "0.74rem" }}
+                                    title="View file"
+                                  >
+                                    View
+                                  </a>
+                                  {(isMaster || user?.canDeleteData !== false) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteServiceFile(sId, (file._id || file.public_id) as string)}
+                                      className="file-delete-btn"
+                                      title="Delete file"
+                                      style={{ padding: "4px" }}
+                                    >
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <polyline points="3 6 5 6 21 6" />
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                      </svg>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="empty-files-container" style={{ padding: "28px 16px" }}>
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                  <path d="M9 12h6" />
+                  <path d="M9 16h6" />
+                </svg>
+                <h4>No services added yet</h4>
+                <p>Add a service above (e.g. Visa Typing, Trade License) to track progress and upload finished documents for this client.</p>
+              </div>
+            )}
           </div>
 
           {/* =========================================================
@@ -1647,6 +2260,33 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
               </span>
             </div>
 
+            <div className="admin-form-field" style={{ marginTop: "14px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                <label className="admin-form-label" style={{ marginBottom: 0 }}>Client Login PIN (6-digit)</label>
+                <button
+                  type="button"
+                  onClick={() => setNewClient({ ...newClient, password: generateRandom6DigitPin() })}
+                  className="preset-pill-btn"
+                  title="Generate 6-digit PIN"
+                  style={{ padding: "4px 8px", fontSize: "0.75rem" }}
+                >
+                  ⚡ Auto-Generate PIN
+                </button>
+              </div>
+              <input
+                type="text"
+                maxLength={8}
+                value={newClient.password}
+                onChange={(e) => setNewClient({ ...newClient, password: e.target.value })}
+                placeholder="Auto-generated if left blank"
+                className="admin-form-input"
+                style={{ letterSpacing: "2px", fontWeight: "600", maxWidth: "240px" }}
+              />
+              <span className="admin-form-helper-text">
+                The walk-in client will use their mobile number and this 6-digit PIN to track their work on abctyping.com.
+              </span>
+            </div>
+
             <div className="admin-modal-actions" style={{ marginTop: "24px", justifyContent: "flex-end" }}>
               <button
                 type="button"
@@ -1664,6 +2304,56 @@ export default function ClientsManager({ user, isMaster }: ClientsManagerProps) 
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {createdCredentials && (
+        <div
+          style={{
+            marginBottom: "16px",
+            padding: "14px 18px",
+            background: "#f0fdf4",
+            border: "1px solid #bbf7d0",
+            borderRadius: "12px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "12px",
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 600, color: "#166534", fontSize: "0.92rem" }}>
+              Client Login Credentials Ready
+            </div>
+            <div style={{ color: "#15803d", fontSize: "0.86rem", marginTop: "2px" }}>
+              Client: <strong>{createdCredentials.name}</strong> | Mobile: <strong>{createdCredentials.phone}</strong> | PIN: <strong style={{ letterSpacing: "1px" }}>{createdCredentials.pin}</strong>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <button
+              type="button"
+              className="capsule-btn-outline"
+              onClick={() => {
+                navigator.clipboard.writeText(
+                  `ABC Typing Tracking Portal\nWebsite: abctyping.com/login\nMobile: ${createdCredentials.phone}\nPIN: ${createdCredentials.pin}`
+                );
+                setCopiedCredentials(true);
+                setTimeout(() => setCopiedCredentials(false), 2500);
+              }}
+              style={{ fontSize: "0.82rem", padding: "6px 12px" }}
+            >
+              {copiedCredentials ? "✓ Copied" : "Copy Credentials"}
+            </button>
+            <button
+              type="button"
+              className="client-inline-close-btn"
+              onClick={() => setCreatedCredentials(null)}
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 
