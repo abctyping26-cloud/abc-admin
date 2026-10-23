@@ -186,6 +186,20 @@ export default function NotesManager({
     return localStorage.getItem("abc_admin_token") || "";
   };
 
+  const getAuthHeaders = useCallback((extraHeaders: Record<string, string> = {}): Record<string, string> => {
+    const headers: Record<string, string> = { ...extraHeaders };
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("abc_admin_token");
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+    }
+    if (user?.id) {
+      headers["x-admin-id"] = user.id;
+      headers["x-admin-role"] = user.role || "worker_admin";
+      headers["x-admin-identifier"] = user.identifier || "";
+    }
+    return headers;
+  }, [user]);
+
   // Sync to fallback cache whenever notes change
   const syncToLocalCache = (updatedNotes: StickyNoteItem[]) => {
     if (typeof window !== "undefined") {
@@ -199,7 +213,6 @@ export default function NotesManager({
   const fetchNotes = useCallback(async () => {
     try {
       setIsLoading(true);
-      const token = getAuthToken();
 
       // Check fallback cache first for instant render
       if (typeof window !== "undefined") {
@@ -220,9 +233,7 @@ export default function NotesManager({
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
       const res = await fetch(`${API_BASE_URL}/api/v1/admin/notes?project=${selectedProject}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -243,7 +254,7 @@ export default function NotesManager({
     } finally {
       setIsLoading(false);
     }
-  }, [selectedProject]);
+  }, [selectedProject, getAuthHeaders]);
 
   useEffect(() => {
     fetchNotes();
@@ -300,13 +311,9 @@ export default function NotesManager({
 
     // 2. Persist to real backend
     try {
-      const token = getAuthToken();
       const res = await fetch(`${API_BASE_URL}/api/v1/admin/notes`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           title: "",
           content: "",
@@ -346,13 +353,9 @@ export default function NotesManager({
       return next;
     });
 
-    const token = getAuthToken();
     fetch(`${API_BASE_URL}/api/v1/admin/notes/${noteId}/position`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ zIndex: newZ }),
     }).catch(() => {});
   };
@@ -415,13 +418,9 @@ export default function NotesManager({
         });
 
         // Persist final position in backend
-        const token = getAuthToken();
         fetch(`${API_BASE_URL}/api/v1/admin/notes/${note._id}/position`, {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ x: finalX, y: finalY }),
         }).catch(() => {});
       }
@@ -445,13 +444,9 @@ export default function NotesManager({
 
     saveTimeoutRef.current[noteId] = setTimeout(async () => {
       try {
-        const token = getAuthToken();
         await fetch(`${API_BASE_URL}/api/v1/admin/notes/${noteId}`, {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ [field]: value }),
         });
       } catch (err) {
@@ -469,13 +464,9 @@ export default function NotesManager({
     });
 
     try {
-      const token = getAuthToken();
       await fetch(`${API_BASE_URL}/api/v1/admin/notes/${noteId}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ color }),
       });
     } catch (err) {
@@ -493,13 +484,9 @@ export default function NotesManager({
     });
 
     try {
-      const token = getAuthToken();
       await fetch(`${API_BASE_URL}/api/v1/admin/notes/${noteId}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ isPinned: nextPin }),
       });
     } catch (err) {
@@ -519,12 +506,9 @@ export default function NotesManager({
     showToast("Note deleted");
 
     try {
-      const token = getAuthToken();
       await fetch(`${API_BASE_URL}/api/v1/admin/notes/${noteId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
       });
     } catch (err) {
       console.warn("Delete note deferred:", err);
@@ -536,12 +520,33 @@ export default function NotesManager({
     async (type: "client" | "invoice", query: string) => {
       try {
         setIsSearchingConnectables(true);
-        const token = getAuthToken();
-        const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+        const headers = getAuthHeaders();
 
+        // 1. First try dedicated notes connectables endpoint (accessible by all admins with notes)
+        try {
+          const connectablesRes = await fetch(
+            `${API_BASE_URL}/api/v1/admin/notes/connectables?type=${type}&q=${encodeURIComponent(query)}`,
+            { headers }
+          );
+          if (connectablesRes.ok) {
+            const json = await connectablesRes.json();
+            if (type === "client" && Array.isArray(json.data?.clients)) {
+              setConnectClients(json.data.clients.slice(0, 25));
+              return;
+            }
+            if (type === "invoice" && Array.isArray(json.data?.invoices)) {
+              setConnectInvoices(json.data.invoices.slice(0, 25));
+              return;
+            }
+          }
+        } catch {
+          // Fall through to direct endpoint if dedicated connectables route fails
+        }
+
+        // 2. Direct endpoint fallback
         if (type === "client") {
           const res = await fetch(`${API_BASE_URL}/api/v1/admin/clients`, {
-            headers: authHeader,
+            headers,
           });
           if (res.ok) {
             const json = await res.json();
@@ -567,7 +572,7 @@ export default function NotesManager({
           }
         } else if (type === "invoice") {
           const res = await fetch(`${API_BASE_URL}/api/v1/admin/accounting/invoices`, {
-            headers: authHeader,
+            headers,
           });
           if (res.ok) {
             const json = await res.json();
@@ -596,7 +601,7 @@ export default function NotesManager({
         setIsSearchingConnectables(false);
       }
     },
-    []
+    [getAuthHeaders]
   );
 
   useEffect(() => {
@@ -640,13 +645,9 @@ export default function NotesManager({
     showToast(`Connected client "${client.name}"`);
 
     try {
-      const token = getAuthToken();
       await fetch(`${API_BASE_URL}/api/v1/admin/notes/${activeConnectNoteId}/connections`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(newConn),
       });
     } catch {}
@@ -684,13 +685,9 @@ export default function NotesManager({
     showToast(`Connected invoice #${inv.invoiceNo}`);
 
     try {
-      const token = getAuthToken();
       await fetch(`${API_BASE_URL}/api/v1/admin/notes/${activeConnectNoteId}/connections`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(newConn),
       });
     } catch {}
@@ -740,13 +737,9 @@ export default function NotesManager({
     showToast(`Added number "${numberValue.trim()}"`);
 
     try {
-      const token = getAuthToken();
       await fetch(`${API_BASE_URL}/api/v1/admin/notes/${activeConnectNoteId}/connections`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(newConn),
       });
     } catch {}
@@ -800,14 +793,13 @@ export default function NotesManager({
 
       // Attempt streaming to Cloudinary via backend if online
       try {
-        const token = getAuthToken();
         const formData = new FormData();
         for (let i = 0; i < files.length; i++) {
           formData.append("files", files[i]);
         }
         await fetch(`${API_BASE_URL}/api/v1/admin/notes/${activeConnectNoteId}/files`, {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: getAuthHeaders(),
           body: formData,
         });
       } catch {}
@@ -834,12 +826,9 @@ export default function NotesManager({
     });
 
     try {
-      const token = getAuthToken();
       await fetch(`${API_BASE_URL}/api/v1/admin/notes/${noteId}/connections/${connId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
       });
     } catch {}
   };

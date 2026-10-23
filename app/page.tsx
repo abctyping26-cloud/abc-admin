@@ -108,6 +108,7 @@ function getFirstAllowedTab(user: any, isMaster: boolean): SidebarTab {
   if (roles.includes("analytics") || roles.includes("cloud_usage")) return "cloud_usage";
   if (roles.includes("web_traffic")) return "web_traffic";
   if (roles.includes("overview")) return "overview";
+  if (roles.includes("notes")) return "notes";
   return "enquiries";
 }
 

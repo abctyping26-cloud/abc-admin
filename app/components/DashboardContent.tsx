@@ -39,6 +39,13 @@ export const AVAILABLE_ADMIN_MODULES: AdminModuleOption[] = [
     icon: "💼",
   },
   {
+    id: "notes",
+    label: "Sticky Notes",
+    shortLabel: "Notes",
+    description: "Collaborative sticky notes canvas, document attachments & connections",
+    icon: "📝",
+  },
+  {
     id: "clients",
     label: "Clients & Files",
     shortLabel: "Clients",
@@ -423,6 +430,7 @@ export default function DashboardContent({
     "enquiries",
     "whatsapp_enquiries",
     "clients",
+    "notes",
   ]);
   const [newAdminCanDelete, setNewAdminCanDelete] = useState<boolean>(false);
 
@@ -1094,7 +1102,7 @@ export default function DashboardContent({
       await refreshWorkerAdmins();
       setNewAdminEmail("");
       setNewAdminPassword("");
-      setNewAdminRoles(["accounting", "enquiries", "whatsapp_enquiries", "clients"]);
+      setNewAdminRoles(["accounting", "enquiries", "whatsapp_enquiries", "clients", "notes"]);
       setNewAdminCanDelete(false);
       setIsCreateModalOpen(false);
     } catch (err: unknown) {
@@ -1109,7 +1117,7 @@ export default function DashboardContent({
     setEditAdminRoles(
       admin.assignedRoles && admin.assignedRoles.length > 0
         ? [...admin.assignedRoles]
-        : ["accounting", "enquiries", "whatsapp_enquiries", "clients"]
+        : ["accounting", "enquiries", "whatsapp_enquiries", "clients", "notes"]
     );
     setEditAdminCanDelete(Boolean(admin.canDeleteData));
     setPermissionsError("");

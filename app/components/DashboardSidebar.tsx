@@ -760,6 +760,32 @@ export default function DashboardSidebar({
       ) : (
         <>
           <nav className="sidebar-nav">
+            {canAccessTab("notes") && (
+              <button
+                type="button"
+                onClick={() => onSelectTab("notes")}
+                className={`sidebar-menu-btn ${activeTab === "notes" ? "active" : ""}`}
+                title="Notes"
+              >
+                <div className="sidebar-menu-left">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z" />
+                    <path d="M15 3v6h6" />
+                    <line x1="9" y1="13" x2="15" y2="13" />
+                    <line x1="9" y1="17" x2="13" y2="17" />
+                  </svg>
+                  <span>Notes</span>
+                </div>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => onSelectTab("web_traffic")}
