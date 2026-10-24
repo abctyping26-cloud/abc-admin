@@ -68,10 +68,32 @@ export interface RenderUsageData {
   serviceName?: string;
   serviceId?: string | null;
   plan?: string;
+  suspended?: boolean;
+  dashboardUrl?: string;
+  serviceUrl?: string;
   uptimeSeconds?: number;
   uptimeFormatted?: string;
   nodeVersion?: string;
   environment?: string;
+  freeHours?: {
+    monthlyLimit: number;
+    usedHours: number;
+    remainingHours: number;
+    percentUsed: number;
+    daysRemainingInMonth: number;
+    resetDate: string;
+    singleServiceNote?: string;
+  };
+  bandwidth?: {
+    recentMb: number;
+    limitFormatted: string;
+  };
+  latestDeploy?: {
+    status: string;
+    commitMessage: string;
+    commitId?: string;
+    finishedAt: string;
+  };
   memory?: {
     rssBytes: number;
     rssFormatted: string;
@@ -441,7 +463,32 @@ export default function CloudUsageSection({ getAuthHeaders }: CloudUsageSectionP
             </div>
           ) : (
             <>
-              {/* Progress Bar: Instance RAM vs 512 MB */}
+              {/* Progress Bar 1: Free Instance Hours vs 750 hrs */}
+              {data?.render?.freeHours && (
+                <div className="cloud-progress-wrapper" style={{ marginBottom: "14px" }}>
+                  <div className="cloud-progress-info">
+                    <span className="cloud-progress-label">Free Instance Hours (750 hrs/mo Quota)</span>
+                    <span className="cloud-progress-val">
+                      <strong>{data.render.freeHours.usedHours}</strong> / 750 hrs ({data.render.freeHours.remainingHours} hrs left)
+                    </span>
+                  </div>
+                  <div className="cloud-progress-track">
+                    <div
+                      className="cloud-progress-fill"
+                      style={{
+                        width: `${Math.max(2, Math.min(100, data.render.freeHours.percentUsed))}%`,
+                        backgroundColor: getProgressColor(data.render.freeHours.percentUsed),
+                      }}
+                    />
+                  </div>
+                  <div className="cloud-progress-caption">
+                    <span>{data.render.freeHours.percentUsed}% monthly hours elapsed</span>
+                    <span>Resets: {data.render.freeHours.resetDate}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Progress Bar 2: Instance RAM vs 512 MB */}
               <div className="cloud-progress-wrapper">
                 <div className="cloud-progress-info">
                   <span className="cloud-progress-label">Memory RAM (RSS Usage)</span>
@@ -467,16 +514,32 @@ export default function CloudUsageSection({ getAuthHeaders }: CloudUsageSectionP
               {/* Detailed Metrics Grid */}
               <div className="cloud-metrics-breakdown">
                 <div className="cloud-metric-item">
-                  <span className="cloud-metric-item-label">Heap Memory</span>
-                  <span className="cloud-metric-item-value">{data?.render?.memory?.heapUsedFormatted || "0 B"}</span>
+                  <span className="cloud-metric-item-label">Hours Remaining</span>
+                  <span className="cloud-metric-item-value" style={{ color: "#10b981", fontWeight: 600 }}>
+                    {data?.render?.freeHours ? `${data.render.freeHours.remainingHours} hrs` : "N/A"}
+                  </span>
                 </div>
                 <div className="cloud-metric-item">
                   <span className="cloud-metric-item-label">Server Uptime</span>
                   <span className="cloud-metric-item-value">{data?.render?.uptimeFormatted || "0m"}</span>
                 </div>
                 <div className="cloud-metric-item">
-                  <span className="cloud-metric-item-label">Node Runtime</span>
-                  <span className="cloud-metric-item-value">{data?.render?.nodeVersion || "v20+"}</span>
+                  <span className="cloud-metric-item-label">Latest Deploy</span>
+                  <span className="cloud-metric-item-value" title={data?.render?.latestDeploy?.commitMessage}>
+                    {data?.render?.latestDeploy
+                      ? `${data.render.latestDeploy.status.toUpperCase()} (${data.render.latestDeploy.commitId || "git"})`
+                      : "Live"}
+                  </span>
+                </div>
+                <div className="cloud-metric-item">
+                  <span className="cloud-metric-item-label">Bandwidth (Recent)</span>
+                  <span className="cloud-metric-item-value">
+                    {data?.render?.bandwidth?.recentMb ? `${data.render.bandwidth.recentMb} MB` : "0 MB"} / 100 GB
+                  </span>
+                </div>
+                <div className="cloud-metric-item">
+                  <span className="cloud-metric-item-label">Heap Memory</span>
+                  <span className="cloud-metric-item-value">{data?.render?.memory?.heapUsedFormatted || "0 B"}</span>
                 </div>
                 <div className="cloud-metric-item">
                   <span className="cloud-metric-item-label">Environment</span>
@@ -486,11 +549,29 @@ export default function CloudUsageSection({ getAuthHeaders }: CloudUsageSectionP
                 </div>
               </div>
 
-              <div className="cloud-card-footer">
+              <div className="cloud-card-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span className="cloud-footer-status">
                   <span className="status-dot green" />
                   Service: <strong>{data?.render?.serviceName}</strong>
                 </span>
+                {data?.render?.dashboardUrl && (
+                  <a
+                    href={data.render.dashboardUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: "12px",
+                      color: "#6366f1",
+                      textDecoration: "none",
+                      fontWeight: 500,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    Open Render ↗
+                  </a>
+                )}
               </div>
             </>
           )}
