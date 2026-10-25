@@ -20,6 +20,7 @@ import ActivityLogManager from "./ActivityLogManager";
 import PrintableInvoiceModal, { PrintableInvoiceData } from "./PrintableInvoiceModal";
 import NotesManager from "./NotesManager";
 import ExpenseRemindersManager from "./ExpenseRemindersManager";
+import WorkDoneManager from "./WorkDoneManager";
 import { API_BASE_URL } from "../config/api";
 
 export interface AdminModuleOption {
@@ -143,6 +144,7 @@ interface DashboardContentProps {
   } | null;
   onPendingCountChange?: (count: number) => void;
   onPendingWhatsAppCountChange?: (count: number) => void;
+  onPendingWorkCountChange?: (count: number) => void;
 }
 
 function formatEnquiryDateTime(dateStr?: string): { formatted: string; relative: string } {
@@ -296,6 +298,7 @@ export default function DashboardContent({
   user,
   onPendingCountChange,
   onPendingWhatsAppCountChange,
+  onPendingWorkCountChange,
 }: DashboardContentProps) {
   const isMaster =
     user?.role === "master_admin" ||
@@ -3751,6 +3754,29 @@ export default function DashboardContent({
         <ExpenseRemindersManager
           getAuthHeaders={getAdminAuthHeaders}
           onNavigateTab={onNavigateTab}
+        />
+      )}
+
+      {activeTab === "work_done" && (
+        <WorkDoneManager
+          user={user}
+          selectedProject={selectedProject}
+          getAuthHeaders={getAdminAuthHeaders}
+          onNavigateTab={onNavigateTab}
+          onRefreshPendingCount={() => {
+            if (onPendingWorkCountChange) {
+              fetch(`${API_BASE_URL}/api/v1/admin/work-logs/pending-count`, {
+                headers: getAdminAuthHeaders(),
+              })
+                .then((r) => r.json())
+                .then((j) => {
+                  if (j.success && typeof j.count === "number") {
+                    onPendingWorkCountChange(j.count);
+                  }
+                })
+                .catch(() => {});
+            }
+          }}
         />
       )}
 

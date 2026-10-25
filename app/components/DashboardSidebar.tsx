@@ -21,6 +21,7 @@ export type SidebarTab =
   | "accounting_banks"
   | "accounting_cash"
   | "expense_reminders"
+  | "work_done"
   | "cloud_usage"
   | "web_traffic";
 
@@ -41,6 +42,7 @@ interface DashboardSidebarProps {
   } | null;
   pendingEnquiriesCount?: number;
   pendingWhatsAppCount?: number;
+  pendingWorkCount?: number;
   isExpanded?: boolean;
   isShrunk?: boolean;
   onCollapse?: () => void;
@@ -55,6 +57,7 @@ export default function DashboardSidebar({
   user,
   pendingEnquiriesCount = 0,
   pendingWhatsAppCount = 0,
+  pendingWorkCount = 0,
   isExpanded = false,
   isShrunk = false,
   onCollapse,
@@ -63,12 +66,12 @@ export default function DashboardSidebar({
   const projectSelectorRef = useRef<HTMLDivElement>(null);
 
   const canAccessTab = (tab: string): boolean => {
-    if (tab === "notes" || tab === "expense_reminders") return true;
+    if (tab === "notes" || tab === "expense_reminders" || tab === "work_done") return true;
     if (isMaster) return true;
     if (tab === "worker_admins" || tab === "activity_log") return false;
     const roles = user?.assignedRoles;
     if (!roles || roles.length === 0) {
-      return ["clients", "enquiries", "whatsapp_enquiries", "accounting", "overview", "notes", "expense_reminders"].includes(tab);
+      return ["clients", "enquiries", "whatsapp_enquiries", "accounting", "overview", "notes", "expense_reminders", "work_done"].includes(tab);
     }
     if (tab === "accounting" || tab.startsWith("accounting_")) {
       return roles.includes("accounting");
@@ -335,6 +338,48 @@ export default function DashboardSidebar({
               </svg>
               <span>Notes</span>
             </div>
+          </button>
+        )}
+
+        {/* Work Done (Available to both Master Admin & Worker Admins) */}
+        {canAccessTab("work_done") && (
+          <button
+            type="button"
+            onClick={() => onSelectTab("work_done")}
+            className={`sidebar-menu-btn ${activeTab === "work_done" ? "active" : ""}`}
+            title="Work Done"
+          >
+            <div className="sidebar-menu-left">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                <path d="m9 14 2 2 4-4" />
+              </svg>
+              <span>Work Done</span>
+            </div>
+            {Boolean(pendingWorkCount && pendingWorkCount > 0) && (
+              <span
+                className="sidebar-badge-dot"
+                title={`${pendingWorkCount} pending task(s) to do`}
+                style={{
+                  width: "10px",
+                  height: "10px",
+                  borderRadius: "50%",
+                  backgroundColor: "#f97316",
+                  boxShadow: "0 0 0 2.5px rgba(249, 115, 22, 0.4)",
+                  display: "inline-block",
+                  marginLeft: "auto",
+                  flexShrink: 0,
+                }}
+              />
+            )}
           </button>
         )}
 

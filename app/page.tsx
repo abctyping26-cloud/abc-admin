@@ -63,6 +63,8 @@ const VALID_TABS: SidebarTab[] = [
   "accounting_invoices",
   "accounting_banks",
   "accounting_cash",
+  "expense_reminders",
+  "work_done",
   "cloud_usage",
   "web_traffic",
 ];
@@ -72,12 +74,12 @@ function isValidTab(tab: unknown): tab is SidebarTab {
 }
 
 function isTabAllowedForUser(tab: SidebarTab, user: any, isMaster: boolean): boolean {
-  if (tab === "notes") return true;
+  if (tab === "notes" || tab === "expense_reminders" || tab === "work_done") return true;
   if (isMaster) return true;
   if (tab === "worker_admins") return false;
   const roles: string[] = user?.assignedRoles;
   if (!roles || roles.length === 0) {
-    return ["clients", "enquiries", "whatsapp_enquiries", "accounting", "overview", "notes"].includes(tab);
+    return ["clients", "enquiries", "whatsapp_enquiries", "accounting", "overview", "notes", "expense_reminders", "work_done"].includes(tab);
   }
   if (tab === "accounting" || tab.startsWith("accounting_")) {
     return roles.includes("accounting");
@@ -165,6 +167,7 @@ export default function Home() {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [pendingEnquiriesCount, setPendingEnquiriesCount] = useState<number>(0);
   const [pendingWhatsAppCount, setPendingWhatsAppCount] = useState<number>(0);
+  const [pendingWorkCount, setPendingWorkCount] = useState<number>(0);
 
   // Fetch initial WhatsApp pending count
   useEffect(() => {
@@ -182,6 +185,31 @@ export default function Home() {
       }
     };
     fetchWaCount();
+  }, []);
+
+  // Fetch Work Done pending count (for orange dot in sidebar)
+  useEffect(() => {
+    const fetchWorkCount = async () => {
+      try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("abc_admin_token") : null;
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const res = await fetch(`${API_BASE_URL}/api/v1/admin/work-logs/pending-count`, { headers });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && typeof json.count === "number") {
+            setPendingWorkCount(json.count);
+          }
+        }
+      } catch {
+        // Ignore network failure
+      }
+    };
+
+    fetchWorkCount();
+    window.addEventListener("abc_work_logs_updated", fetchWorkCount);
+    return () => window.removeEventListener("abc_work_logs_updated", fetchWorkCount);
   }, []);
 
   let user = null;
@@ -360,6 +388,7 @@ export default function Home() {
           user={user}
           pendingEnquiriesCount={pendingEnquiriesCount}
           pendingWhatsAppCount={pendingWhatsAppCount}
+          pendingWorkCount={pendingWorkCount}
           isExpanded={isSidebarExpanded}
           isShrunk={isNotesTab}
           onCollapse={() => setIsSidebarExpanded(false)}
@@ -371,7 +400,12 @@ export default function Home() {
             aria-hidden="true"
           />
         )}
-        {selectedProject === "abc_typing" || activeTab === "web_traffic" || activeTab === "cloud_usage" || activeTab === "notes" ? (
+        {selectedProject === "abc_typing" ||
+        activeTab === "web_traffic" ||
+        activeTab === "cloud_usage" ||
+        activeTab === "notes" ||
+        activeTab === "work_done" ||
+        activeTab === "expense_reminders" ? (
           <DashboardContent
             activeTab={activeTab}
             onNavigateTab={handleTabChange}
@@ -379,6 +413,7 @@ export default function Home() {
             user={user}
             onPendingCountChange={setPendingEnquiriesCount}
             onPendingWhatsAppCountChange={setPendingWhatsAppCount}
+            onPendingWorkCountChange={setPendingWorkCount}
           />
         ) : (
           <main
