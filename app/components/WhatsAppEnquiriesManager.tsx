@@ -82,6 +82,13 @@ export interface QuickReplyItem {
   createdAt?: string;
 }
 
+export interface WhatsAppNotificationConfig {
+  _id?: string;
+  emailNotificationsEnabled: boolean;
+  notificationEmails: string[];
+  notificationMode: "all_messages" | "first_message_only";
+}
+
 export default function WhatsAppEnquiriesManager({
   user,
   onPendingCountChange,
@@ -151,6 +158,22 @@ export default function WhatsAppEnquiriesManager({
   const [showUserDetailsModal, setShowUserDetailsModal] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
 
+  // Email Notification Config State
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [waConfig, setWaConfig] = useState<WhatsAppNotificationConfig>({
+    emailNotificationsEnabled: true,
+    notificationEmails: [
+      "milanjiji0987654321@gmail.com",
+      "abctyping20@gmail.com",
+    ],
+    notificationMode: "all_messages",
+  });
+  const [isConfigLoading, setIsConfigLoading] = useState(false);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
+  const [configFeedback, setConfigFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [newEmailInput, setNewEmailInput] = useState("");
+
   const handleCopyPhone = (phone: string) => {
     navigator.clipboard.writeText(`+${phone}`);
     setCopiedPhone(true);
@@ -161,15 +184,16 @@ export default function WhatsAppEnquiriesManager({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setShowUserDetailsModal(false);
+        setShowConfigModal(false);
       }
     };
-    if (showUserDetailsModal) {
+    if (showUserDetailsModal || showConfigModal) {
       document.addEventListener("keydown", handleKeyDown);
     }
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [showUserDetailsModal]);
+  }, [showUserDetailsModal, showConfigModal]);
 
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -418,10 +442,125 @@ export default function WhatsAppEnquiriesManager({
     }
   }, []);
 
-  // Fetch quick replies on initial mount
+  // Fetch WhatsApp Notification Config from MongoDB
+  const fetchWhatsAppConfig = useCallback(async () => {
+    try {
+      setIsConfigLoading(true);
+      const res = await fetch(`${API_BASE_URL}/api/v1/whatsapp/config`);
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json.success && json.data) {
+        setWaConfig({
+          emailNotificationsEnabled: json.data.emailNotificationsEnabled ?? true,
+          notificationEmails: json.data.notificationEmails?.length
+            ? json.data.notificationEmails
+            : ["milanjiji0987654321@gmail.com", "abctyping20@gmail.com"],
+          notificationMode: json.data.notificationMode || "all_messages",
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load WhatsApp notification config:", err);
+    } finally {
+      setIsConfigLoading(false);
+    }
+  }, []);
+
+  // Fetch quick replies and config on initial mount
   useEffect(() => {
     fetchQuickReplies();
-  }, [fetchQuickReplies]);
+    fetchWhatsAppConfig();
+  }, [fetchQuickReplies, fetchWhatsAppConfig]);
+
+  // Save WhatsApp Notification Config to MongoDB
+  const handleSaveConfig = async () => {
+    setIsSavingConfig(true);
+    setConfigFeedback(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/whatsapp/config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(waConfig),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.message || "Failed to update configuration");
+      }
+      setWaConfig(json.data);
+      setConfigFeedback({
+        type: "success",
+        text: "Configuration saved successfully to MongoDB.",
+      });
+      setTimeout(() => setConfigFeedback(null), 4000);
+    } catch (err: any) {
+      console.error("Error saving WhatsApp config:", err);
+      setConfigFeedback({
+        type: "error",
+        text: err?.message || "Failed to save configuration.",
+      });
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
+
+  // Dispatch Test WhatsApp Notification Email
+  const handleSendTestEmail = async () => {
+    setIsSendingTestEmail(true);
+    setConfigFeedback(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/whatsapp/config/test-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.message || "Failed to send test email");
+      }
+      setConfigFeedback({
+        type: "success",
+        text: json.message || "Test alert email dispatched successfully via Resend!",
+      });
+    } catch (err: any) {
+      console.error("Error sending test email:", err);
+      setConfigFeedback({
+        type: "error",
+        text: err?.message || "Failed to send test alert email.",
+      });
+    } finally {
+      setIsSendingTestEmail(false);
+    }
+  };
+
+  // Add new email address to recipients
+  const handleAddEmail = () => {
+    const trimmed = newEmailInput.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!trimmed || !emailRegex.test(trimmed)) {
+      alert("Please enter a valid email address (e.g. staff@example.com).");
+      return;
+    }
+    if (waConfig.notificationEmails.includes(trimmed)) {
+      alert("This email address is already added to recipients.");
+      return;
+    }
+    setWaConfig((prev) => ({
+      ...prev,
+      notificationEmails: [...prev.notificationEmails, trimmed],
+    }));
+    setNewEmailInput("");
+  };
+
+  // Remove email address from recipients
+  const handleRemoveEmail = (emailToRemove: string) => {
+    if (waConfig.notificationEmails.length <= 1) {
+      if (!confirm("Removing all emails means no one will receive alerts. Are you sure?")) {
+        return;
+      }
+    }
+    setWaConfig((prev) => ({
+      ...prev,
+      notificationEmails: prev.notificationEmails.filter((e) => e !== emailToRemove),
+    }));
+  };
 
   // Create new quick reply in MongoDB
   const handleCreateQuickReply = async (e: React.FormEvent) => {
@@ -652,6 +791,18 @@ export default function WhatsAppEnquiriesManager({
                   type="button"
                   className="wa-dropdown-item"
                   onClick={() => {
+                    setShowConfigModal(true);
+                    setShowSettingsMenu(false);
+                  }}
+                >
+                  <span className="wa-dropdown-icon">⚙️</span>
+                  <span>Email Alerts Config</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="wa-dropdown-item"
+                  onClick={() => {
                     setActiveView((v) => (v === "replies" ? "chats" : "replies"));
                     setMobileChatOpen(false);
                     setShowSettingsMenu(false);
@@ -692,6 +843,31 @@ export default function WhatsAppEnquiriesManager({
 
         {/* Desktop Header Buttons (hidden on mobile) */}
         <div className="wa-desktop-action-buttons">
+          {/* WhatsApp Email Notification Config Button (Left to Quick Replies) */}
+          <button
+            type="button"
+            onClick={() => setShowConfigModal(true)}
+            className="flat-secondary-btn"
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px" }}
+            title="Configure WhatsApp email alerts & recipient inboxes"
+          >
+            <span>⚙️ Email Alerts</span>
+            {waConfig && !waConfig.emailNotificationsEnabled && (
+              <span
+                style={{
+                  fontSize: "9px",
+                  background: "#fee2e2",
+                  color: "#dc2626",
+                  padding: "1px 5px",
+                  borderRadius: "4px",
+                  fontWeight: 700,
+                }}
+              >
+                OFF
+              </span>
+            )}
+          </button>
+
           {/* Quick Replies Manager Button (Left of Link Meta WABA) */}
           <button
             type="button"
@@ -1802,6 +1978,333 @@ export default function WhatsAppEnquiriesManager({
                 className="wa-modal-done-btn"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp Email Notification Configuration Modal */}
+      {showConfigModal && (
+        <div
+          className="wa-modal-backdrop"
+          onClick={() => setShowConfigModal(false)}
+        >
+          <div
+            className="wa-user-detail-card"
+            style={{ maxWidth: "560px" }}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            {/* Modal Header */}
+            <div className="wa-modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "1.2rem" }}>🔔</span>
+                <span className="wa-modal-header-title">WhatsApp Email Alerts Configuration</span>
+              </div>
+              <button
+                type="button"
+                className="wa-modal-close-btn"
+                onClick={() => setShowConfigModal(false)}
+                aria-label="Close"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div
+              className="wa-modal-body"
+              style={{
+                padding: "20px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "18px",
+                overflowY: "auto",
+                maxHeight: "75vh",
+              }}
+            >
+              {configFeedback && (
+                <div
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    backgroundColor: configFeedback.type === "success" ? "#ecfdf5" : "#fef2f2",
+                    color: configFeedback.type === "success" ? "#065f46" : "#991b1b",
+                    border: `1px solid ${configFeedback.type === "success" ? "#a7f3d0" : "#fecaca"}`,
+                  }}
+                >
+                  {configFeedback.text}
+                </div>
+              )}
+
+              {/* Master Enable/Disable Toggle */}
+              <div
+                style={{
+                  backgroundColor: "#f8fafc",
+                  padding: "16px",
+                  borderRadius: "10px",
+                  border: "1px solid #e2e8f0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: "14px", color: "#0f172a" }}>
+                  Enable WhatsApp Email Alerts
+                </div>
+                <label style={{ position: "relative", display: "inline-block", width: "48px", height: "26px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={waConfig.emailNotificationsEnabled}
+                    onChange={(e) =>
+                      setWaConfig((prev) => ({
+                        ...prev,
+                        emailNotificationsEnabled: e.target.checked,
+                      }))
+                    }
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span
+                    style={{
+                      position: "absolute",
+                      cursor: "pointer",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: waConfig.emailNotificationsEnabled ? "#10b981" : "#cbd5e1",
+                      transition: "0.2s",
+                      borderRadius: "26px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        position: "absolute",
+                        content: '""',
+                        height: "20px",
+                        width: "20px",
+                        left: waConfig.emailNotificationsEnabled ? "25px" : "3px",
+                        bottom: "3px",
+                        backgroundColor: "white",
+                        transition: "0.2s",
+                        borderRadius: "50%",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                      }}
+                    />
+                  </span>
+                </label>
+              </div>
+
+              {/* Notification Mode Selection */}
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#334155", marginBottom: "8px" }}>
+                  Notification Frequency Mode
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  <label
+                    style={{
+                      border: `1.5px solid ${waConfig.notificationMode === "all_messages" ? "#2563eb" : "#e2e8f0"}`,
+                      backgroundColor: waConfig.notificationMode === "all_messages" ? "#eff6ff" : "#ffffff",
+                      padding: "10px 14px",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="waNotificationMode"
+                      value="all_messages"
+                      checked={waConfig.notificationMode === "all_messages"}
+                      onChange={() => setWaConfig((prev) => ({ ...prev, notificationMode: "all_messages" }))}
+                    />
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>Every Message</span>
+                  </label>
+
+                  <label
+                    style={{
+                      border: `1.5px solid ${waConfig.notificationMode === "first_message_only" ? "#2563eb" : "#e2e8f0"}`,
+                      backgroundColor: waConfig.notificationMode === "first_message_only" ? "#eff6ff" : "#ffffff",
+                      padding: "10px 14px",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="waNotificationMode"
+                      value="first_message_only"
+                      checked={waConfig.notificationMode === "first_message_only"}
+                      onChange={() => setWaConfig((prev) => ({ ...prev, notificationMode: "first_message_only" }))}
+                    />
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>New Enquiries Only</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Recipient Email List */}
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <label style={{ fontSize: "13px", fontWeight: 700, color: "#334155" }}>
+                    Notification Recipients ({waConfig.notificationEmails.length})
+                  </label>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "12px" }}>
+                  {waConfig.notificationEmails.map((email) => (
+                    <div
+                      key={email}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "8px 12px",
+                        backgroundColor: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "8px",
+                        fontSize: "13px",
+                      }}
+                    >
+                      <span style={{ color: "#0f172a", fontWeight: 500, fontFamily: "monospace" }}>{email}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveEmail(email)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#ef4444",
+                          cursor: "pointer",
+                          fontSize: "16px",
+                          lineHeight: 1,
+                          padding: "4px 8px",
+                          borderRadius: "4px",
+                        }}
+                        title={`Remove ${email}`}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  {waConfig.notificationEmails.length === 0 && (
+                    <div style={{ padding: "12px", textAlign: "center", color: "#94a3b8", fontSize: "13px", border: "1px dashed #cbd5e1", borderRadius: "8px" }}>
+                      No recipient emails added. Notifications will not be dispatched.
+                    </div>
+                  )}
+                </div>
+
+                {/* Add Email Input Row */}
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <input
+                    type="email"
+                    placeholder="Enter staff email (e.g. staff@example.com)"
+                    value={newEmailInput}
+                    onChange={(e) => setNewEmailInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddEmail();
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "8px 12px",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddEmail}
+                    className="flat-secondary-btn"
+                    style={{ fontSize: "12px", padding: "8px 14px", fontWeight: 600 }}
+                  >
+                    + Add
+                  </button>
+                </div>
+              </div>
+
+              {/* Send Test Email Section */}
+              <div
+                style={{
+                  backgroundColor: "#f0fdf4",
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  border: "1px solid #bbf7d0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                }}
+              >
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "#166534" }}>
+                  Verify Email Delivery
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSendTestEmail}
+                  disabled={isSendingTestEmail || waConfig.notificationEmails.length === 0}
+                  className="flat-secondary-btn"
+                  style={{
+                    backgroundColor: "#ffffff",
+                    borderColor: "#86efac",
+                    color: "#166534",
+                    fontSize: "12px",
+                    padding: "6px 12px",
+                    fontWeight: 600,
+                    flexShrink: 0,
+                  }}
+                >
+                  {isSendingTestEmail ? "Sending..." : "🚀 Send Test Alert"}
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              className="wa-modal-footer"
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "10px",
+                padding: "14px 18px",
+                borderTop: "1px solid #e2e8f0",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowConfigModal(false)}
+                className="flat-secondary-btn"
+                style={{ fontSize: "13px", padding: "8px 16px" }}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveConfig}
+                disabled={isSavingConfig}
+                className="flat-primary-btn"
+                style={{
+                  backgroundColor: "#0f172a",
+                  color: "#ffffff",
+                  fontSize: "13px",
+                  padding: "8px 20px",
+                  borderRadius: "6px",
+                  fontWeight: 600,
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                {isSavingConfig ? "Saving..." : "Save Settings"}
               </button>
             </div>
           </div>
