@@ -951,12 +951,7 @@ export default function WhatsAppEnquiriesManager({
         <div className="wa-quick-replies-view">
           <div className="wa-qr-header">
             <div>
-              <h2 className="wa-qr-title">Quick Replies & Dynamic Variables</h2>
-              <p className="wa-qr-subtitle">
-                Create and manage custom response templates. Use variable placeholders like{" "}
-                <code>{"{{customerName}}"}</code>, <code>{"{{phone}}"}</code>, <code>{"{{date}}"}</code>, and{" "}
-                <code>{"{{time}}"}</code> that automatically fill with each customer&apos;s real information when clicked.
-              </p>
+              <h2 className="wa-qr-title">Quick Replies</h2>
             </div>
             <button
               type="button"
@@ -1009,10 +1004,7 @@ export default function WhatsAppEnquiriesManager({
                 </div>
 
                 <div className="wa-qr-form-group">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                    <label className="wa-qr-label" style={{ margin: 0 }}>Message Template</label>
-                    <span className="wa-qr-hint">Click variable to insert:</span>
-                  </div>
+                  <label className="wa-qr-label" style={{ marginBottom: "6px" }}>Message Template</label>
 
                   {/* Variable Helper Pills */}
                   <div className="wa-qr-variable-tags">
@@ -1075,13 +1067,10 @@ export default function WhatsAppEnquiriesManager({
 
             {/* List of Existing Quick Replies */}
             <div className="wa-qr-card list-card">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+              <div style={{ marginBottom: "14px" }}>
                 <h3 className="wa-qr-section-title" style={{ margin: 0 }}>
                   Active Quick Replies ({quickReplies.length})
                 </h3>
-                <span style={{ fontSize: "0.76rem", color: "#64748b" }}>
-                  Persisted in MongoDB
-                </span>
               </div>
 
               {isLoadingReplies ? (
